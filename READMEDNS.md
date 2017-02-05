@@ -8,7 +8,7 @@ Whilst doing some Purple Team exercises, we found that HTTP/S traffic from Empir
   * UDP server implemented using scapy
 * Launcher
   * Encodes the initial stage 0 stager as a one line python script
-  * Can’t use scapy, must use stdlib instead as it cannot be assumed that extra libraries are installed on the victim machine
+  * Scapy can't be used, must use stdlib instead as it cannot be assumed that extra libraries are installed on the victim machine. Judicious usage of struct is required!
 * Stager
   * Sets up the necessary crypto for downloading the full implant over DNS
 * Agent
