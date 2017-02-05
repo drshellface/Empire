@@ -2,6 +2,13 @@
 
 Whilst doing some Purple Team exercises, we found that HTTP/S traffic from Empire was being blocked by a proxy. Cobalt Strike, for example, has DNS capabilities for staging its payloads and we wanted to have the same functionality in Empire.
 
+# Usage
+
+* Create the listener (dnstxt)
+* Edit the "Host" field to be your Empire server
+* Edit the fake domain to be a domain that you control (that is, you run the nameservers for that domain)
+* Create the Python launcher and run it from your victim machine
+
 # Design
 
 * Listener
@@ -67,6 +74,8 @@ Tasking is performed in the following way
 
 Lots :-)
 
+* Launcher needs to extract DNS server from local machine and use that instead of hardcoded address
+* PowerShell port
 * Turn off all the debugging messages
 * Use properly randomized DNS transaction IDs for all DNS requests
 * Handle multiple clients gracefully. This will probably involve simply rejecting clients whilst staging is ongoing and other clients sleeping until they get a slot (e.g., exponential backoff)
