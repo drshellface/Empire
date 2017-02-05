@@ -37,19 +37,31 @@ The communication between the client (victim) and the server (attacker) is imple
 * You need to have your own domain set up where the server is hosted, you need to be the authoratitive owner of the domain, that is, you need to be running the nameservers for the domain so that all DNS requests for the domain come to your server
 
 # Protocol Breakdown
-* Stage 1: A record request received from launcher by listener with base32 encoded routing packet
+
+This is how the DNS staging process fits into the stages of the Empire staging process
+
+* *Stage 1*: A record request received from launcher by listener with base32 encoded routing packet
   * Routing packet processed, compressed & encrypted stager is generated
   * A record response is sent back with a significant IP address 
-* Stage 2: TXT record request is recv'd by listener
+* *Stage 2*: TXT record request is recv'd by listener
   * Response is sent from listener to launcher with compressed & encrypted stager via TXT record responses
   * Launcher decompresses and decrypts the stager then executes it
-* Stage 3: Stager generates DH key and sends back to listener as multiple A record requests (base32 encoded hostname)
+* *Stage 3*: Stager generates DH key and sends back to listener as multiple A record requests (base32 encoded hostname)
  * A record response is sent back with a significant IP address
-* Stage 4: Listener receives TXT request from Stager
+* *Stage 4*: Listener receives TXT request from Stager
   * Stager receives TXT record response from Listener containing key and nonce
-* Stage 5: Stager sends A record request to Listener with encrypted nonce and sysinfo
-* Stage 6: Listener receives TXT record request from Stager
+* *Stage 5*: Stager sends A record request to Listener with encrypted nonce and sysinfo
+* *Stage 6*: Listener receives TXT record request from Stager
   * Stager receives compressed & encrypted Agent via TXT record responses, decompressed, decrypts and executes it
+
+Tasking is performed in the following way
+
+* Client sends a A record requests to server which contain a base32-encoded routing packet
+* Server checks to see if tasking is available for the client
+* If no tasking is available (standard Agent check-in), an IP address signifying a NOP operation is sent back to the client
+* If tasking is available, an IP address signifying that tasking is available is sent back to the client
+* The client then sends a TXT request to the server to retrieve the tasking information
+* The server sends the tasking information back to the client via base64 encoded TXT responses as described above
 
 # TODO
 
