@@ -5,7 +5,7 @@ Whilst doing some Purple Team exercises, we found that HTTP/S traffic from Empir
 # Design
 
 * Listener
-  * UDP server implemented using scapy
+  * UDP server implemented using [scapy](http://www.secdev.org/projects/scapy/)
 * Launcher
   * Encodes the initial stage 0 stager as a one line python script
   * Scapy can't be used, must use stdlib instead as it cannot be assumed that extra libraries are installed on the victim machine. Judicious usage of struct is required!
