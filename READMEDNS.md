@@ -30,3 +30,31 @@ The communication between the client (victim) and the server (attacker) is imple
   * The client sends the request as a DNS A record request to the server
   * The server ACKs the data transfer with an A record response
   * When there is no more data left to send, the client sends an A record request for a specific hostname (the default is "smtp.") indicating that the data transfer is over.
+
+# Requirements
+
+* Scapy needs to be installed on the server, e.g., `sudo pip install scapy --upgrade`
+* You need to have your own domain set up where the server is hosted, you need to be the authoratitive owner of the domain, that is, you need to be running the nameservers for the domain so that all DNS requests for the domain come to your server
+
+# Protocol Breakdown
+* Stage 1: A record request received from launcher by listener with base32 encoded routing packet
+  * Routing packet processed, compressed & encrypted stager is generated
+  * A record response is sent back with a significant IP address 
+* Stage 2: TXT record request is recv'd by listener
+  * Response is sent from listener to launcher with compressed & encrypted stager via TXT record responses
+  * Launcher decompresses and decrypts the stager then executes it
+* Stage 3: Stager generates DH key and sends back to listener as multiple A record requests (base32 encoded hostname)
+ * A record response is sent back with a significant IP address
+* Stage 4: Listener receives TXT request from Stager
+  * Stager receives TXT record response from Listener containing key and nonce
+* Stage 5: Stager sends A record request to Listener with encrypted nonce and sysinfo
+* Stage 6: Listener receives TXT record request from Stager
+  * Stager receives compressed & encrypted Agent via TXT record responses, decompressed, decrypts and executes it
+
+# TODO
+
+Lots :-)
+
+* Turn off all the debugging messages
+* Use properly randomized DNS transaction IDs for all DNS requests
+* Handle multiple clients gracefully. This will probably involve simply rejecting clients whilst staging is ongoing and other clients sleeping until they get a slot (e.g., exponential backoff)
