@@ -105,6 +105,26 @@ class Listener:
                 'Required'      :   True,
                 'Value'         :   'pc'
             },
+            'NS1Hostname' : {
+                'Description'   :   'Hostname for NS1 record',
+                'Required'      :   True,
+                'Value'         :   'phoenix'
+            },
+            'IPNS1' : {
+                'Description'   :   'IP address for NS1',
+                'Required'      :   True,
+                'Value'         :   '192.168.1.1'
+            },
+            'NS2Hostname' : {
+                'Description'   :   'Hostname for NS2 record',
+                'Required'      :   True,
+                'Value'         :   'minotaur'
+            },
+            'IPEOF' : {
+                'Description'   :   'IP address for NS2',
+                'Required'      :   True,
+                'Value'         :   '192.168.1.2'
+            },
             'TaskingHostname' : {
                 'Description'   :   'Hostname for agent tasking received via A records',
                 'Required'      :   True,
@@ -792,6 +812,8 @@ def send_message(packets=None):
                         elif host.startswith(taskinghostname):
                             print "[TASKING A]"
                             tasking_results = self.process_tasking_a(sock, stagingKey, listenerOptions, host, ipack, ipnop, ipswitchatotxt, addr, fake_domain, astoptransfer)
+                        elif host.startswith():
+                            print ""
                         else:
                             self.default_response()
                     elif dns[DNSQR].qtype == 16:
