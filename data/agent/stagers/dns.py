@@ -902,6 +902,7 @@ def send_data_to_listener(prefix, sock, host, port, payload, fake_domain):
     for i in range(0,len(b32_labels)+(len(b32_labels)/2)):
         if counter <2:
             print "[STAGER] processing label {} with i {} counter {}".format(b32_labels[0], i, counter)
+            txn_id_bytes = bytearray(struct.pack('>H', random.randint(0,65535)))
             label_len = bytearray(struct.pack('B', len(b32_labels[0])))
             ba_b32=bytearray(label_len+bytes(b32_labels[0]))
             b32_pkt.extend(ba_b32)
