@@ -629,7 +629,7 @@ def send_message(packets=None):
         self.send_txt_record_reply_id(sock, hostname, ipack, addr)
         txt_request, txt_addr = sock.recvfrom(512)
 
-        self.send_payload_via_txt(hostname, sock, payload, addr, txtstoptransfer, reply_id, reply_qd)
+        self.send_payload_via_txt(hostname, sock, payload, txt_addr, txtstoptransfer, reply_id, reply_qd)
         
     def stop_data_transfer(self, sock, host, port, txtstoptransfer, hostname, reply_id):
         #sock.sendto(bytes("EOF"),(host, int(port)))
