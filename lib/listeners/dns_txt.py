@@ -754,23 +754,24 @@ def send_message(packets=None):
             # remove prefix + suffix
             del a_array[0]
             del a_array[-1:]
-            print "a_array len {}".format(len(a_array))
+            print "[PROCESS] a_array {}".format(a_array)
+            print "[PROCESS] a_array len {}".format(len(a_array))
             if len(a_array) == 1:
                 a_base32 = a_base32+a_array[0]
             elif len(a_array) == 2:
-                print "concat a_array 0 {} + a_array 1 {}".format(a_array[0], a_array[1])
+                print "[PROCESS] concat a_array 0 {} + a_array 1 {}".format(a_array[0], a_array[1])
                 a_base32 = a_base32 + a_array[0] + a_array[1]
             self.send_a_record_reply_id(sock, a_host, ipack, server_dns, a_dns.id, a_dns.qd)
-        print "About to decode {}".format(a_base32)
+        print "[PROCESS] About to decode {}".format(a_base32)
         routingPacket = base64.b32decode(a_base32)
         dataResults = self.mainMenu.agents.handle_agent_data(stagingKey, routingPacket, listenerOptions, addr[0])
         if dataResults and len(dataResults) > 0:
             for (language, results) in dataResults:
                 if results:        
-                    self.send_a_record_reply(sock, a_host, ipswitchatotxt, addr)
+                    self.send_a_record_reply_id(sock, a_host, ipswitchatotxt, server_dns, a_dns.id, a_dns.qd)
                     return results
                 else:
-                    self.send_a_record_reply(sock, a_host, ipnop, addr)
+                    self.send_a_record_reply_id(sock, a_host, ipnop, server_dns, a_dns.id, a_dns.qd)
                     return None
                             
     # Stage 2
