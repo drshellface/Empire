@@ -746,6 +746,7 @@ def send_message(packets=None):
             a_dns = DNS(data)
             if self.is_eof_response(a_dns):
                 print "[PROCESS] BREAKING"
+                self.send_a_record_reply_id(sock, recv_hostname, ipeof, server_dns, a_dns.id, a_dns.qd)
                 break
             a_host = a_dns[DNSQR].qname.decode('ascii')
             a_host = a_host.replace('.' + fake_domain, "")
