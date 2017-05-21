@@ -759,7 +759,7 @@ def send_message(packets=None):
             elif len(a_array) == 2:
                 print "concat a_array 0 {} + a_array 1 {}".format(a_array[0], a_array[1])
                 a_base32 = a_base32 + a_array[0] + a_array[1]
-            self.send_a_record_reply_id(sock, a_host, ipack, addr, a_dns.id, a_dns.qd)
+            self.send_a_record_reply_id(sock, a_host, ipack, server_dns, a_dns.id, a_dns.qd)
         print "About to decode {}".format(a_base32)
         routingPacket = base64.b32decode(a_base32)
         dataResults = self.mainMenu.agents.handle_agent_data(stagingKey, routingPacket, listenerOptions, addr[0])
