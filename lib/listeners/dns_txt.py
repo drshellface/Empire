@@ -563,12 +563,6 @@ def send_message(packets=None):
             ar=DNSRR(rrname=str(reply_hostname), type='A', rdata=reply_ipaddr, ttl=300))    
         sock.sendto(bytes(reply), reply_addr_tuple)
 
-    def send_a_record_reply(self, sock, reply_hostname, reply_ipaddr, reply_addr_tuple):
-        reply = DNS(
-            ancount=1, qr=1,
-            an=DNSRR(rrname=str(reply_hostname), type='A', rdata=reply_ipaddr, ttl=300))
-        sock.sendto(bytes(reply), reply_addr_tuple)
-
     def send_a_record_reply_id(self, sock, reply_hostname, reply_ipaddr, reply_addr_tuple, reply_id, reply_qd):
         reply = DNS(
             id=reply_id,ancount=1, qr=1,
@@ -738,15 +732,17 @@ def send_message(packets=None):
 
     # Agent requests tasking information
     def process_tasking_a(self, sock, stagingKey, listenerOptions, recv_hostname, ipack, ipnop, ipswitchatotxt, addr, fake_domain, astoptransfer, ipeof, reply_id, reply_qd):
+        # ack tasking request from agent
         self.send_a_record_reply_id(sock, recv_hostname, ipack, addr, reply_id, reply_qd)
 
         a_base32 = ""
         while True:
             data,server_dns=sock.recvfrom(512)
             a_dns = DNS(data)
+            print "[PROCESS] recv hostname {}".format(a_dns[DNSQR].qname.decode('ascii'))
             if self.is_eof_response(a_dns):
                 print "[PROCESS] BREAKING"
-                self.send_a_record_reply_id(sock, recv_hostname, ipeof, server_dns, a_dns.id, a_dns.qd)
+                self.send_a_record_reply_id(sock, a_dns[DNSQR].qname.decode('ascii'), ipeof, server_dns, a_dns.id, a_dns.qd)
                 break
             a_host = a_dns[DNSQR].qname.decode('ascii')
             a_host = a_host.replace('.' + fake_domain, "")
@@ -765,6 +761,7 @@ def send_message(packets=None):
         print "[PROCESS] About to decode {}".format(a_base32)
         routingPacket = base64.b32decode(a_base32)
         dataResults = self.mainMenu.agents.handle_agent_data(stagingKey, routingPacket, listenerOptions, addr[0])
+        print "Got result {} for IP {}".format(dataResults, addr[0])
         if dataResults and len(dataResults) > 0:
             for (language, results) in dataResults:
                 if results:        

