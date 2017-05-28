@@ -762,6 +762,7 @@ def send_message(packets=None):
         routingPacket = base64.b32decode(a_base32)
         dataResults = self.mainMenu.agents.handle_agent_data(stagingKey, routingPacket, listenerOptions, addr[0])
         print "Got result {} for IP {}".format(dataResults, addr[0])
+        # FIXME can only send a reply in response to an actual request!
         if dataResults and len(dataResults) > 0:
             for (language, results) in dataResults:
                 if results:        
