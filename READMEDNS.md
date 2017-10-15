@@ -77,5 +77,4 @@ Lots :-)
 * Launcher needs to extract DNS server from local machine and use that instead of hardcoded address
 * PowerShell port
 * Turn off all the debugging messages
-* Use properly randomized DNS transaction IDs for all DNS requests
 * Handle multiple clients gracefully. This will probably involve simply rejecting clients whilst staging is ongoing and other clients sleeping until they get a slot (e.g., exponential backoff)
