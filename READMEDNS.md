@@ -40,7 +40,7 @@ The communication between the client (victim) and the server (attacker) is imple
 
 # Requirements
 
-* Scapy needs to be installed on the server, e.g., `sudo pip install scapy --upgrade`
+* Scapy needs to be installed on the server, e.g., `sudo -H pip install scapy --upgrade`
 * You need to have your own domain set up where the server is hosted, you need to be the authoratitive owner of the domain, that is, you need to be running the nameservers for the domain so that all DNS requests for the domain come to your server
 
 # Protocol Breakdown
