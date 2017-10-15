@@ -5,7 +5,7 @@ Whilst doing some Purple Team exercises, we found that HTTP/S traffic from Empir
 # Usage
 
 * Create the listener (dnstxt)
-* Edit the "Host" field to be your Empire server
+* Edit the "Host" field to be the DNS server that the victim uses (this will need to be changed to automatically extract the value from the victim machine in the future)
 * Edit the fake domain to be a domain that you control (that is, you run the nameservers for that domain)
 * Create the Python launcher and run it from your victim machine
 
