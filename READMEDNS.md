@@ -5,7 +5,7 @@ Whilst doing some Purple Team exercises, we found that HTTP/S traffic from Empir
 # Usage
 
 * Create the listener (dnstxt)
-* Edit the "Host" field to be your Empire server
+* Edit the "Host" field to be the DNS server that the victim uses (this will need to be changed to automatically extract the value from the victim machine in the future)
 * Edit the fake domain to be a domain that you control (that is, you run the nameservers for that domain)
 * Create the Python launcher and run it from your victim machine
 
@@ -40,7 +40,7 @@ The communication between the client (victim) and the server (attacker) is imple
 
 # Requirements
 
-* Scapy needs to be installed on the server, e.g., `sudo pip install scapy --upgrade`
+* Scapy needs to be installed on the server, e.g., `sudo -H pip install scapy --upgrade`
 * You need to have your own domain set up where the server is hosted, you need to be the authoratitive owner of the domain, that is, you need to be running the nameservers for the domain so that all DNS requests for the domain come to your server
 
 # Protocol Breakdown
@@ -77,5 +77,4 @@ Lots :-)
 * Launcher needs to extract DNS server from local machine and use that instead of hardcoded address
 * PowerShell port
 * Turn off all the debugging messages
-* Use properly randomized DNS transaction IDs for all DNS requests
 * Handle multiple clients gracefully. This will probably involve simply rejecting clients whilst staging is ongoing and other clients sleeping until they get a slot (e.g., exponential backoff)
