@@ -208,6 +208,17 @@ class Listener:
                 'Required'      :   False,
                 'Value'         :   ''
             },
+            'SlackToken' : {
+                'Description'   :   'Your SlackBot API token to communicate with your Slack instance.',
+                'Required'      :   False,
+                'Value'         :   ''
+            },
+            'SlackChannel' : {
+                'Description'   :   'The Slack channel or DM that notifications will be sent to.',
+                'Required'      :   False,
+                'Value'         :   '#general'
+            }
+
         }
 
         # required:
@@ -230,7 +241,7 @@ class Listener:
         return True
 
 
-    def generate_launcher(self, encode=False, userAgent='default', proxy='default', proxyCreds='default', stagerRetries='0', language=None, safeChecks='false', listenerName=None):
+    def generate_launcher(self, encode=False, userAgent='default', proxy='default', proxyCreds='default', stagerRetries='0', language=None, safeChecks='false', listenerName=None, obfuscate=False, obfuscationCommand=""):
         """
         Generate a basic launcher for the specified listener.
         """
